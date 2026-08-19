@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - main
+      - master
 
 jobs:
   build:
@@ -14,33 +15,48 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          submodules: recursive
+
+      - name: Fix script permissions
+        run: |
+          chmod +x DevKit/Helpers/check-tools.sh
+          find DevKit -type f -name "*.sh" -exec chmod +x {} \;
 
       - name: Show environment
         run: |
+          echo "macOS:"
+          sw_vers
+          echo "Xcode:"
           xcodebuild -version
-          swift --version
-          make --version
-
-      - name: Make scripts executable
-        run: |
-          chmod +x package-tipa.sh || true
+          echo "Architecture:"
+          uname -m
+          echo "Repository:"
+          pwd
 
       - name: Build TIPA
         run: |
           make tipa
 
       - name: Find TIPA
+        id: find_tipa
         run: |
-          echo "Generated TIPA files:"
+          echo "Searching for TIPA files..."
+
           find . -type f -name "*.tipa" -print
+
+          TIPA=$(find . -type f -name "*.tipa" | head -n 1)
+
+          if [ -z "$TIPA" ]; then
+            echo "ERROR: No .tipa file was generated."
+            exit 1
+          fi
+
+          echo "Found: $TIPA"
+          echo "tipa=$TIPA" >> "$GITHUB_OUTPUT"
 
       - name: Upload TIPA
         uses: actions/upload-artifact@v4
         with:
           name: Relaxin-TIPA
-          path: |
-            **/*.tipa
+          path: ${{ steps.find_tipa.outputs.tipa }}
           if-no-files-found: error
-          retention-days: 7
+          retention-days: 30
