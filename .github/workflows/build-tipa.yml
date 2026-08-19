@@ -1,235 +1,198 @@
-# Relaxin build automation
+name: Build & Release Relaxin TIPA
 
-SHELL := /bin/bash
-.SHELLFLAGS := -o pipefail -c
+on:
+  push:
+    branches:
+      - main
 
-# =============================================================================
-# Configuration
-# =============================================================================
+  workflow_dispatch:
 
-ROOT_DIR        := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
-PROJECT         := $(ROOT_DIR)/Relaxin.xcodeproj
-IOS_SCHEME      := Relaxin
-LITE_SCHEME     := RelaxinLite
-CONFIGURATION   := Debug
-LITE_CONFIGURATION := Release
-DERIVED_DATA    ?= /private/tmp/relaxin-deriveddata
-VERSION_CONFIG  := $(ROOT_DIR)/Configuration/Version.xcconfig
-APP_VERSION     := $(strip $(shell awk -F= '/^[[:space:]]*MARKETING_VERSION[[:space:]]*=/ { gsub(/^[[:space:]]+|[[:space:]]+$$/, "", $$2); print $$2; exit }' "$(VERSION_CONFIG)"))
+permissions:
+  contents: write
 
-IOS_DESTINATION := generic/platform=iOS
-DEV_ENV         := $(ROOT_DIR)/.env.sh
-APP_BUNDLE      := $(DERIVED_DATA)/Build/Products/$(CONFIGURATION)-iphoneos/$(IOS_SCHEME).app
-LITE_APP_BUNDLE := $(DERIVED_DATA)/Build/Products/$(LITE_CONFIGURATION)-iphoneos/$(LITE_SCHEME).app
-IPA_OUTPUT      ?= $(ROOT_DIR)/build/Artifacts/$(IOS_SCHEME)-$(APP_VERSION).ipa
-IPA_PACKAGER    := $(ROOT_DIR)/DevKit/Helpers/package-ipa.sh
-TIPA_OUTPUT     ?= $(ROOT_DIR)/build/Artifacts/$(IOS_SCHEME)-$(APP_VERSION).tipa
-TIPA_PACKAGER   := $(ROOT_DIR)/DevKit/Helpers/package-tipa.sh
-TIPA_ENTITLEMENTS := $(ROOT_DIR)/DevKit/Packaging/Relaxin.tipa.entitlements
-LITE_DEB_OUTPUT ?= $(ROOT_DIR)/build/Artifacts/relaxin-lite.deb
-LITE_DEB_PACKAGER := $(ROOT_DIR)/DevKit/Packaging/RelaxinLite/package-deb.sh
+jobs:
+  build:
+    name: Build Relaxin TIPA
+    runs-on: macos-14
 
-ifeq ($(APP_VERSION),)
-$(error MARKETING_VERSION is missing from $(VERSION_CONFIG))
-endif
+    steps:
+      # =========================
+      # 1. Checkout
+      # =========================
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-BOOTSTRAP_SOURCE_DIRECTORY := $(ROOT_DIR)/build/BootstrapSources
-BOOTSTRAP_RESOURCE_DIRECTORY := $(ROOT_DIR)/build/BootstrapResources
-BOOTSTRAP_SOURCE := $(BOOTSTRAP_SOURCE_DIRECTORY)/bootstrap_1900.tar.zst
-BOOTSTRAP_RESOURCE := $(BOOTSTRAP_RESOURCE_DIRECTORY)/bootstrap_1900.tar.zst
-BOOTSTRAP_DOWNLOAD_SCRIPT := $(ROOT_DIR)/DevKit/Helpers/download-bootstrap.sh
-BOOTSTRAP_PREPARATION_SCRIPT := $(ROOT_DIR)/DevKit/Helpers/prepare-bootstrap.sh
-BOOTSTRAP_UICACHE_POLICY := $(ROOT_DIR)/DevKit/Bootstrap/UICache.entitlements
-ADHOC_SIGNATURE_VERIFIER_SOURCE := $(ROOT_DIR)/DevKit/Bootstrap/VerifyAdHocSignature.c
-ADHOC_SIGNATURE_VERIFIER := $(ROOT_DIR)/build/Tools/VerifyAdHocSignature
-BASEBIN_RESOURCE_DIRECTORY := $(ROOT_DIR)/build/BaseBinResources
+      # =========================
+      # 2. Environment
+      # =========================
+      - name: Show environment
+        run: |
+          echo "macOS:"
+          sw_vers
 
-# run-xcodebuild.sh wraps xcodebuild, captures the full log, replays it through
-# xcbeautify when available, and fails with a non-zero status when the
-# log contains compiler errors or "** ... FAILED **" markers — even if
-# xcodebuild itself returned 0.
-XCODEBUILD_WRAPPER := $(ROOT_DIR)/DevKit/Helpers/run-xcodebuild.sh
-TOOL_CHECKER       := $(ROOT_DIR)/DevKit/Helpers/check-tools.sh
+          echo ""
+          echo "Xcode:"
+          xcodebuild -version
 
-XCODEBUILD := $(XCODEBUILD_WRAPPER) \
-    -project "$(PROJECT)" \
-    -derivedDataPath "$(DERIVED_DATA)" \
-    -skipMacroValidation \
-    -skipPackagePluginValidation \
-    CODE_SIGNING_ALLOWED=NO \
-    CODE_SIGNING_REQUIRED=NO \
-    CODE_SIGN_IDENTITY=""
+          echo ""
+          echo "Swift:"
+          swift --version
 
-.PHONY: all help print-version \
-        build build-ios lite-deb tipa ipa bootstrap-resources scan-license check test-host \
-        kernel-offsets \
-        format format-lint \
-        clean \
-        _check-bootstrap-tools _check-xcode-tools _check-tipa-tools _check-lite-tools \
-        _check-format-tools
+      # =========================
+      # 3. Install dependencies
+      # =========================
+      - name: Install dependencies
+        run: |
+          brew update
 
-.SECONDARY: $(BOOTSTRAP_SOURCE)
+          brew install ldid || true
+          brew install xz || true
+          brew install zstd || true
 
-# =============================================================================
-# Meta
-# =============================================================================
+      # =========================
+      # 4. Prepare scripts
+      # =========================
+      - name: Prepare build scripts
+        run: |
+          chmod +x mybuild.sh || true
+          chmod +x .env.sh || true
 
-all: build
+          echo "Makefile:"
+          ls -la Makefile
 
-print-version:
-	@echo "$(APP_VERSION)"
+          echo "Build script:"
+          ls -la mybuild.sh || true
 
-help:
-	@echo "Build:"
-	@echo "  build                 Build the iOS app (scheme: $(IOS_SCHEME))"
-	@echo "  build-ios             Alias for build"
-	@echo "  lite-deb              Build the Relaxin Lite RootHide package"
-	@echo "  ipa                   Build and package an unsigned IPA"
-	@echo "  tipa                  Build and package a no-sandbox TIPA"
-	@echo "  bootstrap-resources   Download, ad-hoc sign, and stage the RootHide bootstrap"
-	@echo "  kernel-offsets        Regenerate the bundled kernelcache offset table"
-	@echo "  scan-license          Refresh Licenses.txt from Vendor"
-	@echo "  check                 Validate kernel, BaseBin, and zstd contracts"
-	@echo "  test-host             Run host-side runtime and kernel contract tests"
-	@echo ""
-	@echo "Formatting:"
-	@echo "  format                Run Swift and C-family formatters (write)"
-	@echo "  format-lint           Run Swift and C-family formatters in check mode"
-	@echo ""
-	@echo "Housekeeping:"
-	@echo "  clean                 Remove derived data and generated BaseBin resources"
+      # =========================
+      # 5. Clean
+      # =========================
+      - name: Clean previous build
+        run: |
+          make clean || true
 
-# =============================================================================
-# Build
-# =============================================================================
+      # =========================
+      # 6. Build TIPA
+      # =========================
+      - name: Build TIPA
+        run: |
+          set -o pipefail
 
-build: build-ios
+          make tipa 2>&1 | tee build.log
 
-scan-license:
-	"$(ROOT_DIR)/DevKit/Helpers/scan-licenses.sh"
+      # =========================
+      # 7. Find TIPA
+      # =========================
+      - name: Locate TIPA
+        id: find_tipa
+        shell: bash
+        run: |
+          echo "Searching for TIPA..."
 
-# Rebuilds Relaxin/Resources/KernelOffsets.plist from a local kernelcache
-# corpus. Not part of `build`: the corpus is far larger than the repository and
-# the table only changes when the supported build list does.
-kernel-offsets:
-	$(MAKE) -C "$(ROOT_DIR)/DevKit/Helpers/KernelOffsets"
-	"$(ROOT_DIR)/DevKit/Helpers/KernelOffsets/build-offset-table.py" \
-	    $(KERNEL_OFFSET_FLAGS)
-	"$(ROOT_DIR)/DevKit/Helpers/KernelOffsets/audit-offset-table.py"
+          find . \
+            -type f \
+            \( -name "*.tipa" -o -name "*.TIPA" \) \
+            -print
 
-check:
-	"$(ROOT_DIR)/DevKit/Helpers/check-zstd-integration.sh"
+          TIPA=$(find . \
+            -type f \
+            \( -name "*.tipa" -o -name "*.TIPA" \) \
+            -print -quit)
 
-test-host:
-	$(MAKE) -C "$(ROOT_DIR)/DevKit/Tests/RootHideSignaturePolicy" clean test
-	$(MAKE) -C "$(ROOT_DIR)/DevKit/Tests/RootHideExecutablePath" clean test
-	$(MAKE) -C "$(ROOT_DIR)/DevKit/Tests/TrustCacheNoKcallModel" clean test
-	$(MAKE) -C "$(ROOT_DIR)/DevKit/Tests/TrustCacheNoKcallController" clean test
-	$(MAKE) -C "$(ROOT_DIR)/DevKit/Tests/TrustCacheNoKcallOwner" clean test
-	"$(ROOT_DIR)/DevKit/Tests/TrustCacheNoKcallWord32/run.sh"
-	"$(ROOT_DIR)/DevKit/Tests/TrustCacheNoKcallKernel/run.sh"
-	$(MAKE) -C "$(ROOT_DIR)/DevKit/Tests/CopyioWindow" clean test
-	$(MAKE) -C "$(ROOT_DIR)/DevKit/Tests/PhysRWPTEWindow" clean test
-	$(MAKE) -C "$(ROOT_DIR)/DevKit/Tests/RocketRuntime" clean test
-	$(MAKE) -C "$(ROOT_DIR)/DevKit/Tests/KernelAccessFailure" clean test
-	$(MAKE) -C "$(ROOT_DIR)/DevKit/Tests/KernelOffsetTable" clean test
-	$(MAKE) -C "$(ROOT_DIR)/DevKit/Tests/RuntimeEnvironment" clean test
-	$(MAKE) -C "$(ROOT_DIR)/DevKit/Tests/BootstrapFinalizer" clean test
-	$(MAKE) -C "$(ROOT_DIR)/DevKit/Tests/PostJailbreakController" clean test
-	$(MAKE) -C "$(ROOT_DIR)/DevKit/Tests/InterfaceMode" clean test
+          if [ -z "$TIPA" ]; then
+            echo "ERROR: No TIPA file found!"
+            echo ""
+            echo "===== Build log ====="
+            cat build.log || true
+            exit 1
+          fi
 
-_check-bootstrap-tools:
-	@$(TOOL_CHECKER) xcode ldid zstd gtar
+          echo "Found:"
+          echo "$TIPA"
 
-_check-xcode-tools:
-	@$(TOOL_CHECKER) xcode rg
+          echo "tipa=$TIPA" >> "$GITHUB_OUTPUT"
 
-_check-tipa-tools:
-	@$(TOOL_CHECKER) ldid
+      # =========================
+      # 8. Rename artifact
+      # =========================
+      - name: Prepare release file
+        id: release
+        shell: bash
+        run: |
+          mkdir -p release
 
-_check-lite-tools:
-	@$(TOOL_CHECKER) xcode dpkg-deb ldid
+          VERSION="build-${GITHUB_RUN_NUMBER}"
+          OUTPUT="release/Relaxin-${VERSION}.tipa"
 
-_check-format-tools:
-	@$(TOOL_CHECKER) swiftformat clang-format
+          cp "${{ steps.find_tipa.outputs.tipa }}" "$OUTPUT"
 
-$(ADHOC_SIGNATURE_VERIFIER): \
-        $(ADHOC_SIGNATURE_VERIFIER_SOURCE) \
-        $(ROOT_DIR)/Makefile \
-        $(DEV_ENV)
-	@mkdir -p "$(dir $@)"
-	source "$(DEV_ENV)" && xcrun --sdk macosx clang \
-	    -target "$$(uname -m)-apple-macos$$(sw_vers -productVersion)" \
-	    -isysroot "$$(xcrun --sdk macosx --show-sdk-path)" \
-	    -Wall -Wextra -Werror -O2 "$<" -o "$@"
-	/usr/bin/codesign --force --sign - --timestamp=none "$@"
-	/usr/bin/codesign --verify --strict "$@"
+          echo "output=$OUTPUT" >> "$GITHUB_OUTPUT"
 
-$(BOOTSTRAP_SOURCE): $(BOOTSTRAP_DOWNLOAD_SCRIPT)
-	@"$(BOOTSTRAP_DOWNLOAD_SCRIPT)" "$@"
+          echo ""
+          echo "Release file:"
+          ls -lh "$OUTPUT"
 
-$(BOOTSTRAP_RESOURCE): \
-        $(BOOTSTRAP_SOURCE) \
-        $(ROOT_DIR)/Makefile \
-        $(BOOTSTRAP_PREPARATION_SCRIPT) \
-        $(BOOTSTRAP_UICACHE_POLICY) \
-        $(ADHOC_SIGNATURE_VERIFIER)
-	@"$(BOOTSTRAP_PREPARATION_SCRIPT)" \
-	    "$<" \
-	    "$@" \
-	    "$(ADHOC_SIGNATURE_VERIFIER)" \
-	    "$(BOOTSTRAP_UICACHE_POLICY)"
+      # =========================
+      # 9. Upload Actions artifact
+      # =========================
+      - name: Upload TIPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Relaxin-TIPA
+          path: release/*.tipa
+          if-no-files-found: error
 
-# A prepared archive is published atomically only after complete verification,
-# so the archive itself is the cache marker; current outputs require no unpack.
-bootstrap-resources: _check-bootstrap-tools
-	@$(MAKE) -C "$(ROOT_DIR)" --no-print-directory "$(BOOTSTRAP_RESOURCE)"
+      # =========================
+      # 10. Generate release tag
+      # =========================
+      - name: Generate release tag
+        id: tag
+        shell: bash
+        run: |
+          TAG="v$(date +'%Y.%m.%d')-${GITHUB_RUN_NUMBER}"
 
-build-ios: _check-xcode-tools
-	source "$(DEV_ENV)" && \
-	    relaxin_prepare_build_environment "$(DERIVED_DATA)" && \
-	    XCBUILD_LABEL=build-ios $(XCODEBUILD) \
-	    -configuration $(CONFIGURATION) \
-	    -scheme $(IOS_SCHEME) \
-	    -destination "$(IOS_DESTINATION)" \
-	    build
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 
-lite-deb: _check-lite-tools
-	@mkdir -p "$(dir $(LITE_DEB_OUTPUT))"
-	source "$(DEV_ENV)" && \
-	    relaxin_prepare_build_environment "$(DERIVED_DATA)" && \
-	    XCBUILD_LABEL=relaxin-lite $(XCODEBUILD) \
-	    -configuration $(LITE_CONFIGURATION) \
-	    -scheme $(LITE_SCHEME) \
-	    -destination "$(IOS_DESTINATION)" \
-	    build
-	"$(LITE_DEB_PACKAGER)" "$(LITE_APP_BUNDLE)" "$(LITE_DEB_OUTPUT)"
+          echo "Release tag:"
+          echo "$TAG"
 
-tipa: _check-tipa-tools build-ios
-	"$(TIPA_PACKAGER)" \
-	    "$(APP_BUNDLE)" \
-	    "$(TIPA_ENTITLEMENTS)" \
-	    "$(TIPA_OUTPUT)"
+      # =========================
+      # 11. Create GitHub Release
+      # =========================
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: Relaxin ${{ steps.tag.outputs.tag }}
+          body: |
+            ## Relaxin TIPA
 
-ipa: build-ios
-	"$(IPA_PACKAGER)" "$(APP_BUNDLE)" "$(IPA_OUTPUT)"
+            Automated build from commit:
 
-# =============================================================================
-# Formatting
-# =============================================================================
+            `${{ github.sha }}`
 
-format: _check-format-tools
-	cd "$(ROOT_DIR)" && source "$(DEV_ENV)" && swiftformat .
-	"$(ROOT_DIR)/DevKit/Helpers/format-c-family.sh" write
+            ### Build information
 
-format-lint: _check-format-tools
-	cd "$(ROOT_DIR)" && source "$(DEV_ENV)" && swiftformat . --lint
-	"$(ROOT_DIR)/DevKit/Helpers/format-c-family.sh" lint
+            - Repository: `${{ github.repository }}`
+            - Branch: `${{ github.ref_name }}`
+            - Build: `#${{ github.run_number }}`
+            - macOS: macos-14
+            - Package: TIPA
 
-# =============================================================================
-# Housekeeping
-# =============================================================================
+            This release was automatically generated by GitHub Actions.
+          files: |
+            release/*.tipa
+          draft: false
+          prerelease: false
 
-clean:
-	rm -rf "$(DERIVED_DATA)"
-	rm -rf "$(ROOT_DIR)/build/BaseBinWork" "$(ROOT_DIR)/build/BaseBinCaches" "$(BASEBIN_RESOURCE_DIRECTORY)"
+      # =========================
+      # 12. Upload build log
+      # =========================
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Relaxin-build-log
+          path: build.log
+          if-no-files-found: ignore
