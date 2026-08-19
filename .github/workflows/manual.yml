@@ -1,101 +1,23 @@
-name: Build TIPA
+name: Build Relaxin TIPA
 
 on:
   workflow_dispatch:
 
 jobs:
   build:
-    name: Build Relaxin
     runs-on: macos-14
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          submodules: recursive
 
-      - name: Show project files
+      - name: Build TIPA
         run: |
-          echo "=== Project ==="
-          ls -la
-          echo "=== Files ==="
-          find . -maxdepth 2 -type f | sort | head -200
-
-      - name: Install build tools
-        run: |
-          brew update
-          brew install ldid
-          brew install make
-
-      - name: Build
-        shell: bash
-        run: |
-          set -e
-
-          if [ -f "./Makefile" ]; then
-            echo "Found Makefile"
-            make
-          elif [ -f "./makefile" ]; then
-            echo "Found makefile"
-            make -f makefile
-          elif [ -f "./build.sh" ]; then
-            echo "Found build.sh"
-            chmod +x ./build.sh
-            ./build.sh
-          else
-            echo "No known build script found."
-            echo "Repository structure:"
-            find . -maxdepth 3 -type f | sort
-            exit 1
-          fi
-
-      - name: Find generated files
-        run: |
-          echo "=== Possible artifacts ==="
-          find . \
-            -type f \
-            \( -name "*.tipa" \
-            -o -name "*.deb" \
-            -o -name "*.dylib" \
-            -o -name "*.ipa" \
-            -o -name "*.app" \) \
-            -print
-
-      - name: Package TIPA
-        shell: bash
-        run: |
-          set -e
-
-          mkdir -p dist
-
-          TIPA=$(find . -type f -name "*.tipa" | head -1 || true)
-
-          if [ -n "$TIPA" ]; then
-            cp "$TIPA" dist/Relaxin.tipa
-            echo "TIPA found: $TIPA"
-            exit 0
-          fi
-
-          APP=$(find . -type d -name "*.app" | head -1 || true)
-
-          if [ -z "$APP" ]; then
-            echo "No .app or .tipa was produced."
-            exit 1
-          fi
-
-          echo "Found app: $APP"
-
-          mkdir -p dist/Payload
-          cp -R "$APP" dist/Payload/
-
-          cd dist
-          zip -r Relaxin.tipa Payload
-
-          echo "Created dist/Relaxin.tipa"
+          chmod +x package-tipa.sh
+          make tipa
 
       - name: Upload TIPA
         uses: actions/upload-artifact@v4
         with:
           name: Relaxin-TIPA
-          path: dist/Relaxin.tipa
-          if-no-files-found: error
+          path: build/Artifacts/*.tipa
