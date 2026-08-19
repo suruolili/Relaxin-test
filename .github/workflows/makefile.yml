@@ -1,4 +1,80 @@
-- name: Build TIPA
-  run: |
-    set -o pipefail
-    make tipa 2>&1 | tee build.log
+name: Build Relaxin TIPA
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install Theos
+        run: |
+          bash -c "$(curl -fsSL https://raw.githubusercontent.com/roothide/theos/master/bin/install-theos)"
+      - name: Install dependencies
+        run: |
+          brew install ldid || true
+          brew install make || true
+      - name: Setup environment
+        run: |
+          echo "THEOS=$THEOS" >> "$GITHUB_ENV"
+          echo "$THEOS/bin" >> "$GITHUB_PATH"
+          chmod +x *.sh 2>/dev/null || true
+      - name: Show project files
+        run: |
+          echo "===== Project ====="
+          ls -la
+          echo "===== Makefile ====="
+          find . -maxdepth 2 -iname "Makefile" -print
+      - name: Build TIPA
+        run: |
+          set -e
+          make clean || true
+          make package FINALPACKAGE=1 PACKAGE_FORMAT=ipa
+      - name: Find TIPA
+        id: find
+        run: |
+          echo "Searching for .tipa..."
+          find . -type f \
+            \( -name "*.tipa" -o -name "*.ipa" \) \
+            -print
+          FILE=$(find . -type f \
+            \( -name "*.tipa" -o -name "*.ipa" \) \
+            -print -quit)
+          if [ -z "$FILE" ]; then
+            echo "ERROR: TIPA/IPA was not generated."
+            exit 1
+          fi
+          echo "Found: $FILE"
+          mkdir -p release
+          cp "$FILE" release/Relaxin.tipa
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Relaxin-TIPA
+          path: release/Relaxin.tipa
+      - name: Generate tag
+        id: tag
+        run: |
+          TAG="v$(date +'%Y.%m.%d')-${GITHUB_RUN_NUMBER}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: Relaxin ${{ steps.tag.outputs.tag }}
+          body: |
+            ## Relaxin TIPA
+            Automated build.
+            Commit:
+            ${{ github.sha }}
+            Build:
+            #${{ github.run_number }}
+          files: |
+            release/Relaxin.tipa
+          draft: false
+          prerelease: false
