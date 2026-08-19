@@ -16,21 +16,26 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Install build tools
+        run: |
+          brew update
+          brew install ldid
+
       - name: Fix script permissions
         run: |
-          chmod +x DevKit/Helpers/check-tools.sh
           find DevKit -type f -name "*.sh" -exec chmod +x {} \;
 
-      - name: Show environment
+      - name: Check build tools
         run: |
-          echo "macOS:"
-          sw_vers
-          echo "Xcode:"
-          xcodebuild -version
-          echo "Architecture:"
-          uname -m
-          echo "Repository:"
-          pwd
+          echo "=== clang ==="
+          clang --version
+
+          echo "=== make ==="
+          make --version
+
+          echo "=== ldid ==="
+          which ldid
+          ldid -h || true
 
       - name: Build TIPA
         run: |
@@ -39,7 +44,7 @@ jobs:
       - name: Find TIPA
         id: find_tipa
         run: |
-          echo "Searching for TIPA files..."
+          echo "Searching for generated TIPA..."
 
           find . -type f -name "*.tipa" -print
 
@@ -50,7 +55,9 @@ jobs:
             exit 1
           fi
 
-          echo "Found: $TIPA"
+          echo "Found TIPA:"
+          echo "$TIPA"
+
           echo "tipa=$TIPA" >> "$GITHUB_OUTPUT"
 
       - name: Upload TIPA
