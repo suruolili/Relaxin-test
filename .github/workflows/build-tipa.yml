@@ -1,0 +1,46 @@
+name: Build Relaxin TIPA
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    name: Build TIPA
+    runs-on: macos-14
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Show environment
+        run: |
+          xcodebuild -version
+          swift --version
+          make --version
+
+      - name: Make scripts executable
+        run: |
+          chmod +x package-tipa.sh || true
+
+      - name: Build TIPA
+        run: |
+          make tipa
+
+      - name: Find TIPA
+        run: |
+          echo "Generated TIPA files:"
+          find . -type f -name "*.tipa" -print
+
+      - name: Upload TIPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: Relaxin-TIPA
+          path: |
+            **/*.tipa
+          if-no-files-found: error
+          retention-days: 7
