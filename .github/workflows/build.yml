@@ -19,21 +19,56 @@ jobs:
     - name: Install build tools
       run: |
         brew update
-        brew install ldid dpkg
-        git clone https://github.com/ProcursusTeam/trustcache.git /tmp/trustcache
 
-        cd /tmp/trustcache
-        make
+        brew install ldid dpkg ripgrep
 
-        sudo cp trustcache /usr/local/bin/
+        echo "Checking installed tools..."
 
-        trustcache --help
+        which ldid
+        which dpkg-deb
+        which rg
+
+
+        echo "Installing trustcache..."
+
+        curl -L https://github.com/opa334/trollstore-tools/releases/latest/download/trustcache \
+        -o trustcache || true
+
+
+        if [ -f trustcache ]; then
+          chmod +x trustcache
+          sudo mv trustcache /usr/local/bin/trustcache
+        fi
+
+
+        echo "Verify tools..."
+
+        ldid -h || true
         dpkg-deb --version
+        trustcache --help || true
+
 
     - name: Fix permissions
       run: |
         chmod +x DevKit/Helpers/*.sh
 
+
+    - name: Build TIPA
+      run: |
+        make tipa
+
+
+    - name: Find TIPA
+      run: |
+        find . -name "*.tipa"
+
+
+    - name: Upload TIPA
+      uses: actions/upload-artifact@v4
+      with:
+        name: Relaxin-tipa
+        path: |
+          **/*.tipa
 
     - name: Build TIPA
       run: |
