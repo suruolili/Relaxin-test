@@ -22,7 +22,11 @@ jobs:
 
         brew update
 
-        brew install make clang ldid
+        brew update
+
+        brew install make
+
+        brew install ldid
 
         echo "===== Compiler ====="
         clang --version
