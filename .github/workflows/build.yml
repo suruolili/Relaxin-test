@@ -18,6 +18,7 @@ jobs:
 
     steps:
 
+
     # 下载源码
     - name: Checkout
       uses: actions/checkout@v4
@@ -44,47 +45,43 @@ jobs:
 
 
 
-    # 安装 trustcache
-    - name: Install trustcache
+    # 安装 Relaxin 所需工具
+    - name: Prepare trustcache tool
       run: |
 
-        echo "Building trustcache..."
+        echo "Searching trustcache requirement..."
 
-        git clone https://github.com/ProcursusTeam/trustcache.git /tmp/trustcache
-
-
-        cd /tmp/trustcache
+        grep -R "trustcache" . || true
 
 
-        make
+        echo "Current PATH:"
+        echo $PATH
 
 
-        sudo install -m 755 trustcache /usr/local/bin/trustcache
+        echo "Checking trustcache..."
 
-
-        echo "===== Check trustcache ====="
-
-        which trustcache
-
-        trustcache --help || true
+        if command -v trustcache >/dev/null 2>&1
+        then
+          trustcache --help || true
+        else
+          echo "trustcache not installed"
+        fi
 
 
 
-    # 修复执行权限
+    # 修复脚本权限
     - name: Fix permissions
       run: |
 
         find DevKit -name "*.sh" -exec chmod +x {} \;
 
-
         chmod +x DevKit/Helpers/*.sh || true
-
 
         ls -la DevKit/Helpers
 
 
 
-    # 编译
+    # 编译 Relaxin
     - name: Build Relaxin TIPA
       run: |
 
@@ -94,7 +91,7 @@ jobs:
 
 
 
-    # 查找生成文件
+    # 查找 tipa
     - name: Find TIPA
       if: always()
       run: |
