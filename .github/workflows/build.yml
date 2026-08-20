@@ -15,18 +15,26 @@ jobs:
     - name: Checkout source
       uses: actions/checkout@v4
 
+    - uses: actions/checkout@v4
 
+    - name: Fix brew lock
+      run: |
+       rm -f /opt/homebrew/var/homebrew/locks/*
+       rm -f /usr/local/var/homebrew/locks/*
     - name: Install dependencies
       run: |
         echo "===== Installing dependencies ====="
 
-        brew update
+        # GitHub macOS runner 已经预装 Homebrew
+        # 不强制 brew update，避免锁冲突
 
-        brew update
+         brew install make ldid
 
-        brew install make
+         echo "===== Versions ====="
 
-        brew install ldid
+         make --version
+         clang --version
+         ldid -h
 
         echo "===== Compiler ====="
         clang --version
