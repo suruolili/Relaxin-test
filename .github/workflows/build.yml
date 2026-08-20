@@ -38,8 +38,7 @@ jobs:
       - name: Install build tools
         run: |
 
-          echo "===== PATH ====="
-          echo $PATH
+          echo "===== Install tools ====="
 
 
           brew install \
@@ -59,7 +58,7 @@ jobs:
 
 
 
-          echo "===== Check tools ====="
+          echo "===== Verify tools ====="
 
 
           which ldid
@@ -79,26 +78,28 @@ jobs:
 
 
       # =========================
-      # Build trustcache
-      # =========================
-
-            # =========================
       # Install trustcache
       # =========================
 
       - name: Install trustcache
         run: |
 
-          echo "Searching existing trustcache"
+
+          echo "===== Searching trustcache ====="
 
 
-          find . -name trustcache -type f || true
+
+          find . \
+          -name trustcache \
+          -type f \
+          || true
 
 
 
           if [ -f "./trustcache" ]; then
 
-              echo "Found local trustcache"
+
+              echo "Using local trustcache"
 
 
               chmod +x ./trustcache
@@ -110,77 +111,37 @@ jobs:
               /usr/local/bin/trustcache
 
 
+
           else
 
-              echo "Downloading trustcache from Procursus packages"
+
+              echo "Downloading trustcache"
 
 
-              curl -L \
+
+              curl -fL \
               https://apt.procurs.us/bootstrapped/usr/bin/trustcache \
-              -o trustcache || true
+              -o trustcache
 
 
 
-              if [ -f trustcache ]; then
-
-                  chmod +x trustcache
+              chmod +x trustcache
 
 
-                  sudo install \
-                  -m 755 \
-                  trustcache \
-                  /usr/local/bin/trustcache
 
-              fi
+              sudo install \
+              -m 755 \
+              trustcache \
+              /usr/local/bin/trustcache
+
+
 
           fi
 
 
 
-          echo "===== Check trustcache ====="
+          echo "===== trustcache check ====="
 
-
-          which trustcache || true
-
-
-          echo "===== Building trustcache ====="
-
-
-          rm -rf /tmp/trustcache
-
-
-
-          git clone \
-          https://github.com/ProcursusTeam/trustcache.git \
-          /tmp/trustcache
-
-
-
-          cd /tmp/trustcache
-
-
-
-          echo "===== trustcache source ====="
-
-          ls -la
-
-
-
-          make
-
-
-
-          echo "===== install ====="
-
-
-          sudo install \
-          -m 755 \
-          trustcache \
-          /usr/local/bin/trustcache
-
-
-
-          echo "===== Verify ====="
 
 
           which trustcache
@@ -200,6 +161,10 @@ jobs:
         run: |
 
 
+          echo "===== Fix scripts ====="
+
+
+
           find DevKit \
           -name "*.sh" \
           -exec chmod +x {} \;
@@ -210,9 +175,6 @@ jobs:
 
 
 
-          echo "===== Helpers ====="
-
-
           ls -la DevKit/Helpers
 
 
@@ -220,7 +182,7 @@ jobs:
 
 
       # =========================
-      # Verify environment
+      # Environment check
       # =========================
 
       - name: Verify environment
@@ -233,25 +195,30 @@ jobs:
 
 
 
-          echo "===== Required tools ====="
+          echo "===== Tools ====="
 
 
 
           which ldid
 
+
           which dpkg-deb
 
+
           which rg
+
 
           which trustcache
 
 
 
-          trustcache --help || true
-
+          ldid -h || true
 
 
           dpkg-deb --version
+
+
+          trustcache --help || true
 
 
 
@@ -265,7 +232,7 @@ jobs:
         run: |
 
 
-          echo "===== BaseBin ====="
+          echo "===== BaseBin files ====="
 
 
 
@@ -299,6 +266,7 @@ jobs:
           set -o pipefail
 
 
+
           export V=1
 
           export VERBOSE=1
@@ -323,7 +291,9 @@ jobs:
 
         with:
 
+
           name: Relaxin-build-log
+
 
           path: build.log
 
@@ -339,6 +309,7 @@ jobs:
         if: always()
 
         run: |
+
 
           find . -name "*.tipa" || true
 
@@ -358,8 +329,9 @@ jobs:
 
         with:
 
+
           name: Relaxin-tipa
 
-          path: |
 
+          path: |
             **/*.tipa
