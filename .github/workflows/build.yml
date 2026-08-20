@@ -61,8 +61,47 @@ jobs:
     # Check trustcache
     # =====================
 
-    - name: Check trustcache
-      run: |
+     - name: Build trustcache
+  run: |
+
+    echo "===== Building trustcache ====="
+
+
+    mkdir -p Tools
+
+
+    git clone --depth=1 \
+      https://github.com/ProcursusTeam/trustcache.git \
+      /tmp/trustcache
+
+
+
+    cd /tmp/trustcache
+
+
+    make
+
+
+
+    cp trustcache \
+    $GITHUB_WORKSPACE/Tools/trustcache
+
+
+
+    chmod +x \
+    $GITHUB_WORKSPACE/Tools/trustcache
+
+
+
+    echo "===== Verify ====="
+
+
+    file \
+    $GITHUB_WORKSPACE/Tools/trustcache
+
+
+    ls -lh \
+    $GITHUB_WORKSPACE/Tools/trustcache
 
         echo "===== Searching trustcache ====="
 
