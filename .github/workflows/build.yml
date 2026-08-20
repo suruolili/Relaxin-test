@@ -19,8 +19,16 @@ jobs:
     - name: Install build tools
       run: |
         brew update
-        brew install ldid ripgrep
+        brew install ldid dpkg
+        git clone https://github.com/ProcursusTeam/trustcache.git /tmp/trustcache
 
+        cd /tmp/trustcache
+        make
+
+        sudo cp trustcache /usr/local/bin/
+
+        trustcache --help
+        dpkg-deb --version
 
     - name: Fix permissions
       run: |
