@@ -63,25 +63,24 @@ jobs:
 
         mkdir -p Tools
 
+        cd Tools/trustcache
 
-        if [ -d Tools/trustcache ]; then
-          cd Tools/trustcache
+        make
 
-          if [ -f Makefile ]; then
-            make
-          fi
+        chmod +x trustcache
 
-          cd ../..
-        fi
+        cd ../..
+ 
+        cp Tools/trustcache/trustcache Tools/trustcache
 
+        chmod +x Tools/trustcache
 
-        if [ -f Tools/trustcache ]; then
-          chmod +x Tools/trustcache
-          echo "trustcache OK"
+        if [ -x Tools/trustcache ]; then
+        echo "trustcache OK"
         else
-          echo "ERROR: trustcache was not generated"
-          exit 1
-        fi
+        echo "ERROR: trustcache was not generated"
+        exit 1
+    fi
 
 
     #
