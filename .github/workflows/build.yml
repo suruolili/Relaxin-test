@@ -1,298 +1,120 @@
 name: Build Relaxin TIPA
 
-
 on:
-  workflow_dispatch:
   push:
     branches:
       - main
-
+  workflow_dispatch:
 
 jobs:
-
   build:
-
-    runs-on: macos-latest
-
-
-    env:
-      HOMEBREW_NO_AUTO_UPDATE: 1
-
+    runs-on: macos-14
 
     steps:
 
-
-    # =====================
-    # Checkout
-    # =====================
-
-    - name: Checkout
+    - name: Checkout source
       uses: actions/checkout@v4
-      with:
-        submodules: false
 
 
-
-    # =====================
-    # Install dependencies
-    # =====================
-
-    - name: Install build tools
+    - name: Install dependencies
       run: |
+        echo "===== Installing dependencies ====="
 
-        echo "===== Install tools ====="
+        brew update
 
-
-        brew install \
-          ldid \
-          dpkg \
-          ripgrep \
-          fakeroot \
-          coreutils \
-          binutils \
-          gnu-tar
+        brew install make clang ldid
 
 
-        echo "===== PATH ====="
-
-        echo $PATH
-
-
-        echo "===== Tools ====="
-
-
-        which ldid
-        which dpkg-deb
-        which rg
-        which fakeroot
-        which ar
-        which tar
-
-
-
-
-    # =====================
-    # Check trustcache
-    # =====================
-
-    - name: Check trustcache
+    - name: Check source tree
       run: |
+        echo "===== Source tree ====="
 
-        echo "===== Searching trustcache ====="
+        ls -la
+
+        find . -iname "*trustcache*" -type f
 
 
-        if [ ! -f Tools/trustcache ]; then
+    #
+    # Build trustcache tool
+    #
+    - name: Build trustcache
+      run: |
+        echo "===== Building trustcache ====="
 
-          echo "ERROR: trustcache missing"
+        mkdir -p Tools
 
-          echo ""
 
-          echo "Please add executable file:"
+        if [ -d Tools/trustcache ]; then
+          cd Tools/trustcache
 
-          echo "Tools/trustcache"
+          if [ -f Makefile ]; then
+            make
+          fi
 
-          echo ""
-
-          find . -iname "*trustcache*" || true
-
-          exit 1
-
+          cd ../..
         fi
 
 
-
-        chmod +x Tools/trustcache
-
-
-
-        echo "===== trustcache info ====="
-
-
-        ls -lh Tools/trustcache
+        if [ -f Tools/trustcache ]; then
+          chmod +x Tools/trustcache
+          echo "trustcache OK"
+        else
+          echo "ERROR: trustcache was not generated"
+          exit 1
+        fi
 
 
-        file Tools/trustcache
-
-
-
-        echo "===== trustcache test ====="
-
-
-        Tools/trustcache --help || true
-
-
-
-
-    # =====================
-    # Fix permissions
-    # =====================
-
-    - name: Fix permissions
+    #
+    # Build Dopamine BaseBin
+    #
+    - name="Build BaseBin"
       run: |
+        echo "===== Building BaseBin ====="
 
+        cd Vendor/Dopamine/BaseBin
 
-        echo "===== Fix scripts ====="
+        if [ -f Makefile ]; then
+          make
+        else
+          echo "BaseBin Makefile missing"
+          exit 1
+        fi
 
-
-
-        find DevKit \
-        -name "*.sh" \
-        -exec chmod +x {} \;
-
-
-
-        chmod +x DevKit/Helpers/*.sh || true
-
-
-
-        chmod +x Tools/trustcache
+        cd ../../..
 
 
 
-
-        echo "Permissions fixed"
-
-
-
-
-    # =====================
-    # Environment check
-    # =====================
-
-    - name: Verify environment
+    #
+    # Build TIPA
+    #
+    - name: Build TIPA
       run: |
+        echo "===== Building TIPA ====="
 
+        chmod +x DevKit/Helpers/check-tools.sh || true
 
-        echo "===== Environment ====="
-
-
-        echo $PATH
-
-
-
-        echo "===== Tools ====="
-
-
-        which ldid
-
-        which dpkg-deb
-
-        which rg
-
-
-        echo "===== trustcache ====="
-
-
-        ls -l Tools/trustcache
+        make tipa
 
 
 
-
-    # =====================
-    # Debug BaseBin
-    # =====================
-
-    - name: Debug BaseBin
+    #
+    # Collect output
+    #
+    - name: Find generated files
       run: |
-
-
-        echo "===== BaseBin tree ====="
-
-
-        find Vendor/Dopamine/BaseBin \
-        -maxdepth 3 \
-        -type f | head -100 || true
-
-
-
-        echo ""
-
-        echo "===== trustcache references ====="
-
-
-        grep -R "trustcache" \
-        Vendor/Dopamine/BaseBin \
-        || true
-
-
-
-
-    # =====================
-    # Build
-    # =====================
-
-    - name: Build Relaxin TIPA
-      run: |
-
-
-        set -o pipefail
-
-
-        export PATH="$PATH:$PWD/Tools"
-
-
-        echo "PATH=$PATH"
-
-
-        echo "===== Start build ====="
-
-
-
-        make tipa V=1 2>&1 | tee build.log
-
-
-
-
-    # =====================
-    # Upload log
-    # =====================
-
-    - name: Upload build log
-      if: always()
-
-      uses: actions/upload-artifact@v4
-
-      with:
-
-        name: Relaxin-build-log
-
-        path: build.log
-
-
-
-
-    # =====================
-    # Find TIPA
-    # =====================
-
-    - name: Find TIPA
-      if: always()
-
-      run: |
-
-
-        echo "===== Searching TIPA ====="
-
+        echo "===== Output files ====="
 
         find . \
-        -name "*.tipa" \
-        -print || true
+        -type f \
+        \( -name "*.tipa" -o -name "*.ipa" \)
 
 
-
-
-    # =====================
-    # Upload TIPA
-    # =====================
 
     - name: Upload TIPA
-      if: success()
-
       uses: actions/upload-artifact@v4
-
       with:
-
-        name: Relaxin-tipa
-
+        name: Relaxin-TIPA
         path: |
           **/*.tipa
+          **/*.ipa
+        if-no-files-found: error
