@@ -82,8 +82,65 @@ jobs:
       # Build trustcache
       # =========================
 
+            # =========================
+      # Install trustcache
+      # =========================
+
       - name: Install trustcache
         run: |
+
+          echo "Searching existing trustcache"
+
+
+          find . -name trustcache -type f || true
+
+
+
+          if [ -f "./trustcache" ]; then
+
+              echo "Found local trustcache"
+
+
+              chmod +x ./trustcache
+
+
+              sudo install \
+              -m 755 \
+              ./trustcache \
+              /usr/local/bin/trustcache
+
+
+          else
+
+              echo "Downloading trustcache from Procursus packages"
+
+
+              curl -L \
+              https://apt.procurs.us/bootstrapped/usr/bin/trustcache \
+              -o trustcache || true
+
+
+
+              if [ -f trustcache ]; then
+
+                  chmod +x trustcache
+
+
+                  sudo install \
+                  -m 755 \
+                  trustcache \
+                  /usr/local/bin/trustcache
+
+              fi
+
+          fi
+
+
+
+          echo "===== Check trustcache ====="
+
+
+          which trustcache || true
 
 
           echo "===== Building trustcache ====="
