@@ -2,11 +2,13 @@ name: Build Relaxin TIPA
 
 
 on:
+
   push:
     branches:
       - main
 
   workflow_dispatch:
+
 
 
 jobs:
@@ -19,15 +21,31 @@ jobs:
     steps:
 
 
-    - name: Checkout
+    # -----------------------------
+    # Checkout
+    # -----------------------------
+
+    - name: Checkout source
+
       uses: actions/checkout@v4
+
       with:
+
         submodules: recursive
+        fetch-depth: 0
 
 
+
+    # -----------------------------
+    # Dependencies
+    # -----------------------------
 
     - name: Install dependencies
+
       run: |
+
+        echo "===== Installing dependencies ====="
+
 
         brew install \
           ldid \
@@ -36,18 +54,32 @@ jobs:
           yq
 
 
-        echo "===== Tools ====="
+
+        echo "===== Versions ====="
+
 
         clang --version
+
         rg --version
+
         jq --version
+
         yq --version
+
         ldid -h
 
 
 
+    # -----------------------------
+    # Prepare
+    # -----------------------------
+
     - name: Prepare scripts
+
       run: |
+
+        echo "===== Preparing scripts ====="
+
 
         find . \
         -name "*.sh" \
@@ -55,61 +87,97 @@ jobs:
 
 
 
+    # -----------------------------
+    # Check Relaxin tree
+    # -----------------------------
+
     - name: Check project
+
       run: |
 
-        echo "===== Tree ====="
-
-        ls
+        echo "===== Project ====="
 
 
-        echo "===== Xcode ====="
+        ls -la
 
-        ls -la Application || true
+
+        echo "===== Makefiles ====="
+
+
+        find . \
+        -name Makefile \
+        -maxdepth 3
+
+
+
+        echo "===== Xcode projects ====="
+
 
         find . \
         -name "*.xcodeproj"
 
 
 
-    #
-    # Build everything
-    #
+    # -----------------------------
+    # Build
+    # -----------------------------
 
-    - name: Build Dopamine style
+    - name: Build Relaxin
+
+      env:
+
+        MIN_IOS_VERSION: "15.0"
+
+
       run: |
 
         echo "===== Building Relaxin ====="
 
 
-        make \
-        MIN_IOS_VERSION=15.0
+        make tipa
 
 
 
-    #
-    # Find TIPA
-    #
+    # -----------------------------
+    # Output
+    # -----------------------------
 
     - name: Find TIPA
+
       run: |
 
+        echo "===== Searching output ====="
+
+
         find . \
-        -name "*.tipa" \
-        -o \
-        -name "*.ipa"
+        -type f \
+        \( \
+          -name "*.tipa" \
+          -o \
+          -name "*.ipa" \
+        \)
 
 
 
-    - name: Upload
+    # -----------------------------
+    # Upload
+    # -----------------------------
+
+    - name: Upload artifact
+
       uses: actions/upload-artifact@v4
+
 
       with:
 
         name: Relaxin-TIPA
 
-        path:
 
-          |
+        path: |
+
           **/*.tipa
+
           **/*.ipa
+
+
+        if-no-files-found: error
