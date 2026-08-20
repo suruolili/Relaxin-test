@@ -67,7 +67,7 @@ jobs:
     #
     # Build Dopamine BaseBin
     #
-    - name="Build BaseBin"
+    - name: Build BaseBin
       run: |
         echo "===== Building BaseBin ====="
 
