@@ -34,7 +34,7 @@ jobs:
 
 
     # =====================
-    # Install tools
+    # Install dependencies
     # =====================
 
     - name: Install build tools
@@ -48,7 +48,7 @@ jobs:
           coreutils
 
 
-        echo "===== tools ====="
+        echo "===== Installed ====="
 
         which ldid
         which dpkg-deb
@@ -58,54 +58,42 @@ jobs:
 
 
     # =====================
-    # Prepare trustcache
+    # Check trustcache
     # =====================
 
-    - name: Prepare trustcache
+    - name: Check trustcache
       run: |
-
 
         echo "===== Searching trustcache ====="
 
 
-        mkdir -p Tools
+        if [ ! -f Tools/trustcache ]; then
 
+          echo "ERROR: trustcache missing"
 
+          echo "Please add executable file:"
 
-        # 如果仓库已经有
-        if [ -f Tools/trustcache ]; then
+          echo "Tools/trustcache"
 
-          echo "Using repository trustcache"
-
-        else
-
-          echo "Creating trustcache placeholder"
-
-
-          cat > Tools/trustcache <<'EOF'
-#!/bin/sh
-
-echo "trustcache placeholder"
-exit 0
-EOF
-
-
-          chmod +x Tools/trustcache
+          exit 1
 
         fi
 
 
 
-        echo "===== Verify ====="
+        chmod +x Tools/trustcache
 
 
-        ls -la Tools
+
+        echo "===== trustcache ====="
+
+
+        ls -lh Tools/trustcache
 
 
         file Tools/trustcache
 
 
-        ./Tools/trustcache || true
 
 
 
@@ -117,7 +105,8 @@ EOF
       run: |
 
 
-        chmod +x Tools/trustcache || true
+        chmod +x Tools/trustcache
+
 
 
         find DevKit \
@@ -130,19 +119,14 @@ EOF
 
 
 
-        echo "===== permission check ====="
-
-
-        ls -la Tools
-
-        ls -la DevKit/Helpers
+        echo "===== Permissions OK ====="
 
 
 
 
 
     # =====================
-    # Environment check
+    # Environment
     # =====================
 
     - name: Verify environment
@@ -159,8 +143,8 @@ EOF
         which rg
 
 
-        echo "trustcache:"
 
+        echo "trustcache:"
 
         ls -l Tools/trustcache
 
@@ -176,22 +160,17 @@ EOF
       run: |
 
 
-        echo "===== BaseBin search ====="
+        echo "===== BaseBin ====="
 
 
-        find . \
-        \( \
-        -iname "*BaseBin*" \
-        -o \
-        -iname "*trustcache*" \
-        \)
+        find Vendor/Dopamine/BaseBin -maxdepth 2 -type d || true
 
 
 
         echo "===== trustcache references ====="
 
 
-        grep -R "Tools/trustcache" . || true
+        grep -R "trustcache" Vendor/Dopamine/BaseBin || true
 
 
 
@@ -206,9 +185,6 @@ EOF
 
 
         set -o pipefail
-
-
-        export VERBOSE=1
 
 
         make tipa V=1 2>&1 | tee build.log
@@ -237,14 +213,13 @@ EOF
 
 
     # =====================
-    # Find tipa
+    # Find TIPA
     # =====================
 
     - name: Find TIPA
       if: always()
 
       run: |
-
 
         find . -name "*.tipa" || true
 
@@ -253,7 +228,7 @@ EOF
 
 
     # =====================
-    # Upload tipa
+    # Upload TIPA
     # =====================
 
     - name: Upload TIPA
@@ -265,6 +240,5 @@ EOF
 
         name: Relaxin-tipa
 
-        path:
-
+        path: |
           **/*.tipa
