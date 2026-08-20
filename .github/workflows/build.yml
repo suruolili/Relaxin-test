@@ -8,7 +8,6 @@ on:
       - main
 
 
-
 jobs:
 
   build:
@@ -20,283 +19,281 @@ jobs:
       HOMEBREW_NO_AUTO_UPDATE: 1
 
 
-
     steps:
 
 
-    # ======================
-    # Checkout
-    # ======================
+      # =========================
+      # Checkout
+      # =========================
 
-    - name: Checkout
-      uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
 
 
-    # ======================
-    # Install tools
-    # ======================
+      # =========================
+      # Install dependencies
+      # =========================
 
-    - name: Install build tools
-      run: |
+      - name: Install build tools
+        run: |
 
-        echo "===== Current PATH ====="
-        echo $PATH
+          echo "===== Original PATH ====="
+          echo $PATH
 
 
-        brew install \
-          ldid \
-          dpkg \
-          ripgrep \
-          fakeroot \
-          coreutils \
-          gnu-tar \
-          binutils
+          brew install \
+            ldid \
+            dpkg \
+            ripgrep \
+            fakeroot \
+            coreutils \
+            gnu-tar \
+            binutils
 
 
+          echo "/opt/homebrew/opt/binutils/bin" >> $GITHUB_PATH
 
-        echo "===== Add GNU tools ====="
+          echo "/opt/homebrew/opt/gnu-tar/libexec/gnubin" >> $GITHUB_PATH
 
 
-        echo "/opt/homebrew/opt/binutils/bin" >> $GITHUB_PATH
 
-        echo "/opt/homebrew/opt/gnu-tar/libexec/gnubin" >> $GITHUB_PATH
+          echo "===== Tools ====="
 
+          which curl
+          which ldid
+          which dpkg-deb
+          which rg
+          which fakeroot
+          which ar
+          which tar
 
 
-        echo "===== Verify tools ====="
 
 
-        which curl
-        which ldid
-        which dpkg-deb
-        which rg
-        which fakeroot
-        which ar
-        which tar
 
+      # =========================
+      # Install trustcache
+      # =========================
 
+      - name: Install trustcache
+        run: |
 
+          echo "Installing trustcache"
 
 
-    # ======================
-    # Install trustcache
-    # ======================
+          echo "PATH=$PATH"
 
-    - name="Install trustcache"
-      run: |
 
-        echo "Installing trustcache"
+          which curl
 
 
-        echo "PATH=$PATH"
 
+          curl -fL \
+          https://github.com/opa334/trollstore-tools/releases/latest/download/trustcache \
+          -o trustcache
 
-        which curl
 
 
+          echo "===== trustcache file ====="
 
-        curl -fL \
-        https://github.com/opa334/trollstore-tools/releases/latest/download/trustcache \
-        -o trustcache
 
+          file trustcache
 
 
-        echo "===== File check ====="
 
+          chmod +x trustcache
 
-        file trustcache
 
 
+          sudo install \
+            -m 755 \
+            trustcache \
+            /usr/local/bin/trustcache
 
-        chmod +x trustcache
 
 
+          echo "===== Verify trustcache ====="
 
-        sudo install \
-        -m 755 \
-        trustcache \
-        /usr/local/bin/trustcache
 
+          which trustcache
 
 
-        echo "===== trustcache ====="
+          trustcache --help || true
 
 
-        which trustcache
 
 
-        trustcache --help || true
 
+      # =========================
+      # Fix permissions
+      # =========================
 
+      - name: Fix permissions
+        run: |
 
 
+          find DevKit \
+          -name "*.sh" \
+          -exec chmod +x {} \;
 
-    # ======================
-    # Fix permissions
-    # ======================
 
-    - name="Fix permissions"
-      run: |
 
+          chmod +x DevKit/Helpers/*.sh || true
 
-        find DevKit \
-        -name "*.sh" \
-        -exec chmod +x {} \;
 
 
-        chmod +x DevKit/Helpers/*.sh || true
+          echo "===== Helpers ====="
 
 
-        echo "===== Helpers ====="
+          ls -la DevKit/Helpers
 
 
-        ls -la DevKit/Helpers
 
 
 
+      # =========================
+      # Verify environment
+      # =========================
 
+      - name: Verify environment
+        run: |
 
-    # ======================
-    # Environment check
-    # ======================
 
-    - name="Verify environment"
-      run: |
+          echo "===== PATH ====="
 
+          echo $PATH
 
-        echo "===== PATH ====="
 
-        echo $PATH
 
+          echo "===== Tools ====="
 
 
-        echo "===== Tools ====="
+          which curl
+          which ldid
+          which dpkg-deb
+          which rg
+          which trustcache
 
 
-        which curl
-        which ldid
-        which dpkg-deb
-        which rg
-        which trustcache
 
+          ar --version || true
 
+          tar --version || true
 
-        ar --version || true
 
-        tar --version || true
 
 
 
+      # =========================
+      # Debug BaseBin
+      # =========================
 
+      - name: Debug BaseBin
+        run: |
 
-    # ======================
-    # Debug BaseBin
-    # ======================
 
-    - name="Debug BaseBin"
-      run: |
+          echo "===== Search BaseBin ====="
 
 
-        echo "===== Search BaseBin ====="
+          find . \
+          \( \
+          -iname "*basebin*" \
+          -o \
+          -iname "*trustcache*" \
+          \)
 
 
-        find . \
-        \( -iname "*basebin*" -o -iname "*trustcache*" \)
 
+          echo "===== Search trustcache usage ====="
 
 
-        echo "===== Search scripts ====="
+          grep -R "trustcache" . || true
 
 
-        grep -R "trustcache" . || true
 
+          echo "===== Archive tools ====="
 
 
-        echo "===== Archive tools ====="
+          which ar
 
+          which ranlib
 
-        which ar
+          which tar
 
-        which ranlib
 
-        which tar
 
 
 
+      # =========================
+      # Build TIPA
+      # =========================
 
+      - name: Build Relaxin TIPA
+        run: |
 
-    # ======================
-    # Build
-    # ======================
 
-    - name="Build Relaxin TIPA"
-      run: |
+          set -o pipefail
 
 
-        set -o pipefail
+          export V=1
 
+          export VERBOSE=1
 
-        export V=1
 
-        export VERBOSE=1
 
+          make tipa V=1 VERBOSE=1 2>&1 | tee build.log
 
 
-        make tipa V=1 VERBOSE=1 2>&1 | tee build.log
 
 
 
+      # =========================
+      # Upload log
+      # =========================
 
+      - name: Upload build log
+        if: always()
 
-    # ======================
-    # Upload log
-    # ======================
+        uses: actions/upload-artifact@v4
 
-    - name="Upload build log"
-      if: always()
+        with:
 
-      uses: actions/upload-artifact@v4
+          name: Relaxin-build-log
 
-      with:
+          path: build.log
 
-        name: Relaxin-build-log
 
-        path: build.log
 
 
 
+      # =========================
+      # Find TIPA
+      # =========================
 
+      - name: Find TIPA
+        if: always()
 
-    # ======================
-    # Find TIPA
-    # ======================
+        run: |
 
-    - name="Find TIPA"
-      if: always()
+          find . -name "*.tipa" || true
 
-      run: |
 
-        find . -name "*.tipa" || true
 
 
 
+      # =========================
+      # Upload TIPA
+      # =========================
 
+      - name: Upload TIPA
+        if: success()
 
-    # ======================
-    # Upload TIPA
-    # ======================
+        uses: actions/upload-artifact@v4
 
-    - name="Upload TIPA"
-      if: success()
+        with:
 
-      uses: actions/upload-artifact@v4
+          name: Relaxin-tipa
 
-
-      with:
-
-        name: Relaxin-tipa
-
-        path:
-
-          **/*.tipa
+          path: |
+            **/*.tipa
