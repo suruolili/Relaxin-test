@@ -59,25 +59,6 @@ jobs:
 
 
 
-    #
-    # Build Dopamine BaseBin
-    #
-
-    - name: Build BaseBin
-      run: |
-        echo "===== Building BaseBin ====="
-
-        cd Vendor/Dopamine/BaseBin
-
-
-        make clean || true
-
-
-        make \
-        MIN_IOS_VERSION=15.0
-
-
-        cd ../../..
 
 
 
@@ -89,9 +70,11 @@ jobs:
       run: |
         echo "===== Building TIPA ====="
 
+        chmod +x DevKit/Helpers/check-tools.sh || true
 
         make \
         MIN_IOS_VERSION=15.0 \
+        SIGNATURE_VERIFIER_SOURCE=Vendor/Dopamine/BaseBin/launchdhook/src/signed_trustcache_restore.c \
         tipa
 
 
