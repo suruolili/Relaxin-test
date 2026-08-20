@@ -10,6 +10,9 @@ jobs:
   build:
     runs-on: macos-latest
 
+    env:
+      HOMEBREW_NO_AUTO_UPDATE: 1
+
     steps:
 
     - name: Checkout
@@ -18,70 +21,53 @@ jobs:
 
     - name: Install build tools
       run: |
-        brew update
+        brew install ldid dpkg ripgrep fakeroot coreutils
 
-        brew install ldid dpkg ripgrep
-
-        echo "Checking installed tools..."
+        echo "=== Check tools ==="
 
         which ldid
         which dpkg-deb
         which rg
-
-
-        echo "Installing trustcache..."
-
-        curl -L https://github.com/opa334/trollstore-tools/releases/latest/download/trustcache \
-        -o trustcache || true
-
-
-        if [ -f trustcache ]; then
-          chmod +x trustcache
-          sudo mv trustcache /usr/local/bin/trustcache
-        fi
-
-
-        echo "Verify tools..."
+        which fakeroot
 
         ldid -h || true
         dpkg-deb --version
-        trustcache --help || true
 
 
-    - name: Fix permissions
+    - name: Fix script permissions
       run: |
         chmod +x DevKit/Helpers/*.sh
 
+        find DevKit -name "*.sh" -exec chmod +x {} \;
 
-    - name: Build TIPA
+        ls -la DevKit/Helpers/
+
+
+    - name: Build Relaxin TIPA
       run: |
-        make tipa
+        set -o pipefail
+        make tipa 2>&1 | tee build.log
 
 
     - name: Find TIPA
+      if: always()
       run: |
-        find . -name "*.tipa"
+        echo "Searching tipa files..."
+        find . -name "*.tipa" || true
+
+
+    - name: Upload build log
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: Relaxin-build-log
+        path: build.log
 
 
     - name: Upload TIPA
+      if: success()
       uses: actions/upload-artifact@v4
       with:
         name: Relaxin-tipa
         path: |
           **/*.tipa
-
-    - name: Build TIPA
-      run: |
-        make tipa
-
-
-    - name: Find TIPA
-      run: |
-        find . -name "*.tipa"
-
-
-    - name: Upload TIPA
-      uses: actions/upload-artifact@v4
-      with:
-        name: Relaxin-tipa
-        path: "**/*.tipa"
