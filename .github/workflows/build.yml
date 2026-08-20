@@ -6,8 +6,10 @@ on:
       - main
   workflow_dispatch:
 
+
 jobs:
   build:
+
     runs-on: macos-14
 
     steps:
@@ -15,26 +17,18 @@ jobs:
     - name: Checkout source
       uses: actions/checkout@v4
 
-    - uses: actions/checkout@v4
 
     - name: Fix brew lock
       run: |
-       rm -f /opt/homebrew/var/homebrew/locks/*
-       rm -f /usr/local/var/homebrew/locks/*
+        rm -f /opt/homebrew/var/homebrew/locks/*
+        rm -f /usr/local/var/homebrew/locks/*
+
+
     - name: Install dependencies
       run: |
         echo "===== Installing dependencies ====="
 
-        # GitHub macOS runner 已经预装 Homebrew
-        # 不强制 brew update，避免锁冲突
-
-         brew install make ldid
-
-         echo "===== Versions ====="
-
-         make --version
-         clang --version
-         ldid -h
+        brew install make ldid || true
 
         echo "===== Compiler ====="
         clang --version
@@ -45,80 +39,35 @@ jobs:
         echo "===== ldid ====="
         ldid -h
 
+
     - name: Check source tree
       run: |
         echo "===== Source tree ====="
 
         ls -la
 
-        find . -iname "*trustcache*" -type f
+        echo "===== Trustcache sources ====="
 
+        find . -iname "*trustcache*" -type f || true
 
-    #
-    # Build trustcache tool
-    #
-    - name: Check trustcache files
-      run: |
-        echo "===== Searching trustcache ====="
-        find . -iname "*trustcache*" -type f
-        echo "===== Tools directory ====="
-        ls -la Tools || true
-    - name: Build trustcache
-      run: |
-       echo "===== Building trustcache ====="
-
-       mkdir -p Tools
- 
-       if [ -d Tools/trustcache ]; then
-          echo "Found Tools/trustcache"
-
-          cd Tools/trustcache
-          make
-          cd ../..
-
-       else
-          echo "Tools/trustcache not found"
-
-          FOUND=$(find . -type f -name "trustcache" | head -1)
-
-          if [ -n "$FOUND" ]; then
-            echo "Found existing trustcache:"
-            echo "$FOUND"
-
-            cp "$FOUND" Tools/trustcache
-          else
-            echo "ERROR: No trustcache binary found"
-            exit 1
-        fi
-        fi
-
-
-       chmod +x Tools/trustcache
-
-       if [ -x Tools/trustcache ]; then
-        echo "trustcache OK"
-       else
-        echo "ERROR: trustcache missing"
-        exit 1
-       fi
-
-        cd ../..
- 
-        cp Tools/trustcache/trustcache Tools/trustcache
-
-          chmod +x Tools/trustcache
-
-        if [ -x Tools/trustcache ]; then
-          echo "trustcache OK"
-        else
-          echo "ERROR: trustcache was not generated"
-          exit 1
-        fi
 
 
     #
     # Build Dopamine BaseBin
     #
+
+    - name: Check BaseBin
+      run: |
+        echo "===== Checking BaseBin ====="
+
+        ls -la Vendor/Dopamine/BaseBin
+
+        find Vendor/Dopamine/BaseBin \
+        -iname "*trustcache*" \
+        -type f || true
+
+
+
     - name: Build BaseBin
       run: |
         echo "===== Building BaseBin ====="
@@ -126,10 +75,14 @@ jobs:
         cd Vendor/Dopamine/BaseBin
 
         if [ -f Makefile ]; then
+
           make
+
         else
-          echo "BaseBin Makefile missing"
+
+          echo "ERROR: BaseBin Makefile missing"
           exit 1
+
         fi
 
         cd ../../..
@@ -137,8 +90,9 @@ jobs:
 
 
     #
-    # Build TIPA
+    # Build Relaxin TIPA
     #
+
     - name: Build TIPA
       run: |
         echo "===== Building TIPA ====="
@@ -150,23 +104,37 @@ jobs:
 
 
     #
-    # Collect output
+    # Find output
     #
+
     - name: Find generated files
       run: |
         echo "===== Output files ====="
 
         find . \
         -type f \
-        \( -name "*.tipa" -o -name "*.ipa" \)
+        \( \
+        -name "*.tipa" \
+        -o \
+        -name "*.ipa" \
+        \)
 
 
+
+    #
+    # Upload
+    #
 
     - name: Upload TIPA
       uses: actions/upload-artifact@v4
+
       with:
+
         name: Relaxin-TIPA
+
         path: |
+
           **/*.tipa
           **/*.ipa
+
         if-no-files-found: error
