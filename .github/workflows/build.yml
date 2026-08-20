@@ -73,14 +73,14 @@ jobs:
  
         cp Tools/trustcache/trustcache Tools/trustcache
 
-        chmod +x Tools/trustcache
+          chmod +x Tools/trustcache
 
         if [ -x Tools/trustcache ]; then
-        echo "trustcache OK"
+          echo "trustcache OK"
         else
-        echo "ERROR: trustcache was not generated"
-        exit 1
-    fi
+          echo "ERROR: trustcache was not generated"
+          exit 1
+        fi
 
 
     #
