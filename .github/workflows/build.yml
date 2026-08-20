@@ -57,6 +57,12 @@ jobs:
     #
     # Build trustcache tool
     #
+    - name: Check trustcache files
+      run: |
+        echo "===== Searching trustcache ====="
+        find . -iname "*trustcache*" -type f
+        echo "===== Tools directory ====="
+        ls -la Tools || true
     - name: Build trustcache
       run: |
         echo "===== Building trustcache ====="
