@@ -227,6 +227,6 @@ jobs:
 
         name: Relaxin-tipa
 
-        path:
+        path: l
 
           **/*.tipa
