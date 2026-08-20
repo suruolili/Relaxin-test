@@ -27,12 +27,13 @@ jobs:
       run: |
         echo "===== Installing dependencies ====="
 
-        brew install make ldid || true
+        brew install make ldid ripgrep || true
 
         echo "===== Versions ====="
 
         clang --version
         make --version
+        rg --version
         ldid -h
 
 
