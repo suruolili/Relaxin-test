@@ -38,7 +38,7 @@ jobs:
       - name: Install build tools
         run: |
 
-          echo "===== Original PATH ====="
+          echo "===== PATH ====="
           echo $PATH
 
 
@@ -52,20 +52,26 @@ jobs:
             binutils
 
 
+
           echo "/opt/homebrew/opt/binutils/bin" >> $GITHUB_PATH
 
           echo "/opt/homebrew/opt/gnu-tar/libexec/gnubin" >> $GITHUB_PATH
 
 
 
-          echo "===== Tools ====="
+          echo "===== Check tools ====="
 
-          which curl
+
           which ldid
+
           which dpkg-deb
+
           which rg
+
           which fakeroot
+
           which ar
+
           which tar
 
 
@@ -73,47 +79,51 @@ jobs:
 
 
       # =========================
-      # Install trustcache
+      # Build trustcache
       # =========================
 
       - name: Install trustcache
         run: |
 
-          echo "Installing trustcache"
+
+          echo "===== Building trustcache ====="
 
 
-          echo "PATH=$PATH"
-
-
-          which curl
-
-
-
-          curl -fL \
-          https://github.com/opa334/trollstore-tools/releases/latest/download/trustcache \
-          -o trustcache
+          rm -rf /tmp/trustcache
 
 
 
-          echo "===== trustcache file ====="
+          git clone \
+          https://github.com/ProcursusTeam/trustcache.git \
+          /tmp/trustcache
 
 
-          file trustcache
+
+          cd /tmp/trustcache
 
 
 
-          chmod +x trustcache
+          echo "===== trustcache source ====="
 
+          ls -la
+
+
+
+          make
+
+
+
+          echo "===== install ====="
 
 
           sudo install \
-            -m 755 \
-            trustcache \
-            /usr/local/bin/trustcache
+          -m 755 \
+          trustcache \
+          /usr/local/bin/trustcache
 
 
 
-          echo "===== Verify trustcache ====="
+          echo "===== Verify ====="
 
 
           which trustcache
@@ -166,20 +176,25 @@ jobs:
 
 
 
-          echo "===== Tools ====="
+          echo "===== Required tools ====="
 
 
-          which curl
+
           which ldid
+
           which dpkg-deb
+
           which rg
+
           which trustcache
 
 
 
-          ar --version || true
+          trustcache --help || true
 
-          tar --version || true
+
+
+          dpkg-deb --version
 
 
 
@@ -193,7 +208,8 @@ jobs:
         run: |
 
 
-          echo "===== Search BaseBin ====="
+          echo "===== BaseBin ====="
+
 
 
           find . \
@@ -205,28 +221,18 @@ jobs:
 
 
 
-          echo "===== Search trustcache usage ====="
+          echo "===== trustcache reference ====="
+
 
 
           grep -R "trustcache" . || true
 
 
 
-          echo "===== Archive tools ====="
-
-
-          which ar
-
-          which ranlib
-
-          which tar
-
-
-
 
 
       # =========================
-      # Build TIPA
+      # Build
       # =========================
 
       - name: Build Relaxin TIPA
@@ -257,6 +263,7 @@ jobs:
 
         uses: actions/upload-artifact@v4
 
+
         with:
 
           name: Relaxin-build-log
@@ -268,7 +275,7 @@ jobs:
 
 
       # =========================
-      # Find TIPA
+      # Find tipa
       # =========================
 
       - name: Find TIPA
@@ -283,7 +290,7 @@ jobs:
 
 
       # =========================
-      # Upload TIPA
+      # Upload tipa
       # =========================
 
       - name: Upload TIPA
@@ -291,9 +298,11 @@ jobs:
 
         uses: actions/upload-artifact@v4
 
+
         with:
 
           name: Relaxin-tipa
 
-          path: |
+          path:
+
             **/*.tipa
