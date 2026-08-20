@@ -122,13 +122,23 @@ jobs:
     # =========================
     # Build TIPA
     # =========================
-    - name: Build Relaxin TIPA
+    - name: Debug BaseBin
       run: |
 
+       echo "===== BaseBin files ====="
+
+       find . -iname "*basebin*" -o -iname "*trustcache*"
+
+       echo "===== Makefiles ====="
+
+       grep -R "BaseBin" . || true
+    - name: Build Relaxin TIPA
+      run: |
         set -o pipefail
 
-        make tipa 2>&1 | tee build.log
+        export VERBOSE=1
 
+        make tipa V=1 2>&1 | tee build.log
 
 
     # =========================
