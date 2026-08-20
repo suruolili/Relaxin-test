@@ -22,323 +22,309 @@ jobs:
     steps:
 
 
-      # =========================
-      # Checkout
-      # =========================
+    # =========================
+    # Checkout
+    # =========================
 
-      - name: Checkout
-        uses: actions/checkout@v4
-
-
-
-      # =========================
-      # Install dependencies
-      # =========================
-
-      - name: Install build tools
-        run: |
-
-          echo "===== Install tools ====="
-
-
-          brew install \
-            ldid \
-            dpkg \
-            ripgrep \
-            fakeroot \
-            coreutils \
-            gnu-tar \
-            binutils
+    - name: Checkout
+      uses: actions/checkout@v4
 
 
 
-          echo "/opt/homebrew/opt/binutils/bin" >> $GITHUB_PATH
+    # =========================
+    # Install dependencies
+    # =========================
 
-          echo "/opt/homebrew/opt/gnu-tar/libexec/gnubin" >> $GITHUB_PATH
+    - name: Install build tools
+      run: |
+
+        echo "===== Install tools ====="
 
 
-
-          echo "===== Verify tools ====="
-
-
-          which ldid
-
-          which dpkg-deb
-
-          which rg
-
-          which fakeroot
-
-          which ar
-
-          which tar
+        brew install \
+          ldid \
+          dpkg \
+          ripgrep \
+          fakeroot \
+          coreutils \
+          gnu-tar \
+          binutils
 
 
 
+        echo "/opt/homebrew/opt/binutils/bin" >> $GITHUB_PATH
 
-
-      # =========================
-      # Install trustcache
-      # =========================
-      # =========================
-      # Install trustcache
-      # =========================
-
-      - name: Install trustcache
-        run: |
-
-          echo "===== Searching trustcache ====="
-
-
-          TRUSTCACHE_PATH=""
-
-
-          # 搜索源码仓库
-          if [ -f "./trustcache" ]; then
-              TRUSTCACHE_PATH="./trustcache"
-          fi
-
-
-          if [ -f "./Tools/trustcache" ]; then
-              TRUSTCACHE_PATH="./Tools/trustcache"
-          fi
-
-
-          if [ -f "./DevKit/trustcache" ]; then
-              TRUSTCACHE_PATH="./DevKit/trustcache"
-          fi
+        echo "/opt/homebrew/opt/gnu-tar/libexec/gnubin" >> $GITHUB_PATH
 
 
 
-          # 搜索已有环境
-          if [ -z "$TRUSTCACHE_PATH" ]; then
-
-              EXISTING=$(which trustcache || true)
-
-              if [ -n "$EXISTING" ]; then
-                  TRUSTCACHE_PATH="$EXISTING"
-              fi
-
-          fi
+        echo "===== Verify ====="
 
 
+        which ldid
 
-          if [ -z "$TRUSTCACHE_PATH" ]; then
+        which dpkg-deb
 
-              echo "ERROR: trustcache not found"
+        which rg
 
-              echo "Please add trustcache binary to:"
-              echo "Tools/trustcache"
+        which fakeroot
 
-              exit 1
+        which ar
 
-          fi
+        which tar
 
 
 
-          echo "Using:"
-          echo "$TRUSTCACHE_PATH"
+
+
+    # =========================
+    # Install trustcache
+    # =========================
+
+    - name: Install trustcache
+      run: |
+
+        echo "===== Searching trustcache ====="
 
 
 
-          chmod +x "$TRUSTCACHE_PATH"
+        TRUSTCACHE=""
 
 
 
-          sudo install \
+        if [ -f "Tools/trustcache" ]; then
+
+            TRUSTCACHE="Tools/trustcache"
+
+        fi
+
+
+
+        if [ -z "$TRUSTCACHE" ]; then
+
+            if command -v trustcache; then
+
+                TRUSTCACHE=$(which trustcache)
+
+            fi
+
+        fi
+
+
+
+        if [ -z "$TRUSTCACHE" ]; then
+
+            echo "ERROR: trustcache not found"
+
+            echo ""
+
+            echo "Please add executable file:"
+
+            echo "Tools/trustcache"
+
+            echo ""
+
+            find . -iname "*trustcache*" || true
+
+
+            exit 1
+
+        fi
+
+
+
+        echo "Using trustcache:"
+
+        echo "$TRUSTCACHE"
+
+
+
+        chmod +x "$TRUSTCACHE"
+
+
+
+        sudo install \
           -m 755 \
-          "$TRUSTCACHE_PATH" \
+          "$TRUSTCACHE" \
           /usr/local/bin/trustcache
 
 
 
-          echo "===== Verify ====="
+        echo "===== trustcache check ====="
 
 
-          which trustcache
+        which trustcache
 
 
-          trustcache --help || true
-
-      # =========================
-      # Fix permissions
-      # =========================
-
-      - name: Fix permissions
-        run: |
-
-
-          echo "===== Fix scripts ====="
+        trustcache --help || true
 
 
 
-          find DevKit \
+
+
+    # =========================
+    # Fix permissions
+    # =========================
+
+    - name: Fix permissions
+      run: |
+
+
+        echo "===== chmod scripts ====="
+
+
+
+        find DevKit \
           -name "*.sh" \
           -exec chmod +x {} \;
 
 
 
-          chmod +x DevKit/Helpers/*.sh || true
+        chmod +x DevKit/Helpers/*.sh || true
 
 
 
-          ls -la DevKit/Helpers
+        ls -la DevKit/Helpers
 
 
 
 
 
-      # =========================
-      # Environment check
-      # =========================
+    # =========================
+    # Environment check
+    # =========================
 
-      - name: Verify environment
-        run: |
+    - name: Verify environment
+      run: |
 
 
-          echo "===== PATH ====="
+        echo "===== PATH ====="
 
-          echo $PATH
+        echo $PATH
 
 
 
-          echo "===== Tools ====="
+        echo "===== Tools ====="
 
 
 
-          which ldid
+        which ldid
 
+        which dpkg-deb
 
-          which dpkg-deb
+        which rg
 
+        which trustcache
 
-          which rg
 
 
-          which trustcache
+        trustcache --help || true
 
 
 
-          ldid -h || true
 
 
-          dpkg-deb --version
+    # =========================
+    # Debug BaseBin
+    # =========================
 
+    - name: Debug BaseBin
+      run: |
 
-          trustcache --help || true
 
+        echo "===== Search BaseBin ====="
 
 
 
+        find . \
+        \( \
+        -iname "*basebin*" \
+        -o \
+        -iname "*trustcache*" \
+        \)
 
-      # =========================
-      # Debug BaseBin
-      # =========================
 
-      - name: Debug BaseBin
-        run: |
 
+        echo "===== Search usage ====="
 
-          echo "===== BaseBin files ====="
 
 
+        grep -R "trustcache" . || true
 
-          find . \
-          \( \
-          -iname "*basebin*" \
-          -o \
-          -iname "*trustcache*" \
-          \)
 
 
 
-          echo "===== trustcache reference ====="
 
+    # =========================
+    # Build TIPA
+    # =========================
 
+    - name: Build Relaxin TIPA
+      run: |
 
-          grep -R "trustcache" . || true
 
+        set -o pipefail
 
 
 
+        export V=1
 
-      # =========================
-      # Build
-      # =========================
+        export VERBOSE=1
 
-      - name: Build Relaxin TIPA
-        run: |
 
 
-          set -o pipefail
+        make tipa V=1 VERBOSE=1 2>&1 | tee build.log
 
 
 
-          export V=1
 
-          export VERBOSE=1
 
+    # =========================
+    # Upload log
+    # =========================
 
+    - name: Upload build log
+      if: always()
 
-          make tipa V=1 VERBOSE=1 2>&1 | tee build.log
+      uses: actions/upload-artifact@v4
 
+      with:
 
+        name: Relaxin-build-log
 
+        path: build.log
 
 
-      # =========================
-      # Upload log
-      # =========================
 
-      - name: Upload build log
-        if: always()
 
-        uses: actions/upload-artifact@v4
 
+    # =========================
+    # Find TIPA
+    # =========================
 
-        with:
+    - name: Find TIPA
+      if: always()
 
+      run: |
 
-          name: Relaxin-build-log
+        find . -name "*.tipa" || true
 
 
-          path: build.log
 
 
 
+    # =========================
+    # Upload TIPA
+    # =========================
 
+    - name: Upload TIPA
+      if: success()
 
-      # =========================
-      # Find tipa
-      # =========================
+      uses: actions/upload-artifact@v4
 
-      - name: Find TIPA
-        if: always()
+      with:
 
-        run: |
+        name: Relaxin-tipa
 
-
-          find . -name "*.tipa" || true
-
-
-
-
-
-      # =========================
-      # Upload tipa
-      # =========================
-
-      - name: Upload TIPA
-        if: success()
-
-        uses: actions/upload-artifact@v4
-
-
-        with:
-
-
-          name: Relaxin-tipa
-
-
-          path: |
-            **/*.tipa
+        path: |
+          **/*.tipa
