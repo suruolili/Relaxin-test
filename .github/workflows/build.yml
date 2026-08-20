@@ -1,5 +1,6 @@
 name: Build Relaxin TIPA
 
+
 on:
   workflow_dispatch:
   push:
@@ -7,27 +8,41 @@ on:
       - main
 
 
+
 jobs:
+
   build:
 
     runs-on: macos-latest
+
 
     env:
       HOMEBREW_NO_AUTO_UPDATE: 1
 
 
+
     steps:
 
 
+    # ======================
     # Checkout
+    # ======================
+
     - name: Checkout
       uses: actions/checkout@v4
 
 
 
-    # Install dependencies
+    # ======================
+    # Install tools
+    # ======================
+
     - name: Install build tools
       run: |
+
+        echo "===== Current PATH ====="
+        echo $PATH
+
 
         brew install \
           ldid \
@@ -39,38 +54,55 @@ jobs:
           binutils
 
 
-        echo "===== Check tools ====="
+
+        echo "===== Add GNU tools ====="
 
 
+        echo "/opt/homebrew/opt/binutils/bin" >> $GITHUB_PATH
+
+        echo "/opt/homebrew/opt/gnu-tar/libexec/gnubin" >> $GITHUB_PATH
+
+
+
+        echo "===== Verify tools ====="
+
+
+        which curl
         which ldid
         which dpkg-deb
         which rg
         which fakeroot
         which ar
-        which ranlib
         which tar
 
 
 
-        echo 'PATH=/opt/homebrew/opt/binutils/bin:$PATH' >> $GITHUB_ENV
-
-        echo 'PATH=/opt/homebrew/opt/gnu-tar/libexec/gnubin:$PATH' >> $GITHUB_ENV
 
 
-
-
-
+    # ======================
     # Install trustcache
-    - name: Install trustcache
+    # ======================
+
+    - name="Install trustcache"
       run: |
 
         echo "Installing trustcache"
+
+
+        echo "PATH=$PATH"
+
+
+        which curl
+
 
 
         curl -fL \
         https://github.com/opa334/trollstore-tools/releases/latest/download/trustcache \
         -o trustcache
 
+
+
+        echo "===== File check ====="
 
 
         file trustcache
@@ -80,7 +112,11 @@ jobs:
         chmod +x trustcache
 
 
-        sudo mv trustcache /usr/local/bin/trustcache
+
+        sudo install \
+        -m 755 \
+        trustcache \
+        /usr/local/bin/trustcache
 
 
 
@@ -96,16 +132,20 @@ jobs:
 
 
 
+    # ======================
     # Fix permissions
-    - name: Fix permissions
+    # ======================
+
+    - name="Fix permissions"
       run: |
 
 
-        find DevKit -name "*.sh" -exec chmod +x {} \;
+        find DevKit \
+        -name "*.sh" \
+        -exec chmod +x {} \;
 
 
         chmod +x DevKit/Helpers/*.sh || true
-
 
 
         echo "===== Helpers ====="
@@ -117,17 +157,29 @@ jobs:
 
 
 
-    # Verify
-    - name: Verify environment
+    # ======================
+    # Environment check
+    # ======================
+
+    - name="Verify environment"
       run: |
+
+
+        echo "===== PATH ====="
 
         echo $PATH
 
 
+
+        echo "===== Tools ====="
+
+
+        which curl
         which ldid
         which dpkg-deb
         which rg
         which trustcache
+
 
 
         ar --version || true
@@ -138,21 +190,23 @@ jobs:
 
 
 
+    # ======================
     # Debug BaseBin
-    - name: Debug BaseBin
+    # ======================
+
+    - name="Debug BaseBin"
       run: |
 
 
-        echo "===== BaseBin files ====="
+        echo "===== Search BaseBin ====="
 
 
         find . \
-        -iname "*basebin*" \
-        -o -iname "*BaseBin*"
+        \( -iname "*basebin*" -o -iname "*trustcache*" \)
 
 
 
-        echo "===== trustcache usage ====="
+        echo "===== Search scripts ====="
 
 
         grep -R "trustcache" . || true
@@ -163,27 +217,30 @@ jobs:
 
 
         which ar
+
         which ranlib
+
         which tar
 
 
 
 
 
+    # ======================
     # Build
-    - name: Build Relaxin TIPA
+    # ======================
+
+    - name="Build Relaxin TIPA"
       run: |
+
 
         set -o pipefail
 
 
-        export VERBOSE=1
-
         export V=1
 
+        export VERBOSE=1
 
-
-        make clean || true
 
 
         make tipa V=1 VERBOSE=1 2>&1 | tee build.log
@@ -192,8 +249,11 @@ jobs:
 
 
 
+    # ======================
     # Upload log
-    - name: Upload build log
+    # ======================
+
+    - name="Upload build log"
       if: always()
 
       uses: actions/upload-artifact@v4
@@ -208,8 +268,11 @@ jobs:
 
 
 
+    # ======================
     # Find TIPA
-    - name: Find TIPA
+    # ======================
+
+    - name="Find TIPA"
       if: always()
 
       run: |
@@ -220,15 +283,20 @@ jobs:
 
 
 
+    # ======================
     # Upload TIPA
-    - name: Upload TIPA
+    # ======================
+
+    - name="Upload TIPA"
       if: success()
 
       uses: actions/upload-artifact@v4
+
 
       with:
 
         name: Relaxin-tipa
 
-        path: |
+        path:
+
           **/*.tipa
