@@ -65,15 +65,42 @@ jobs:
         ls -la Tools || true
     - name: Build trustcache
       run: |
-        echo "===== Building trustcache ====="
+       echo "===== Building trustcache ====="
 
-        mkdir -p Tools
+       mkdir -p Tools
+ 
+       if [ -d Tools/trustcache ]; then
+          echo "Found Tools/trustcache"
 
-        cd Tools/trustcache
+          cd Tools/trustcache
+          make
+          cd ../..
 
-        make
+       else
+          echo "Tools/trustcache not found"
 
-        chmod +x trustcache
+          FOUND=$(find . -type f -name "trustcache" | head -1)
+
+          if [ -n "$FOUND" ]; then
+            echo "Found existing trustcache:"
+            echo "$FOUND"
+
+            cp "$FOUND" Tools/trustcache
+          else
+            echo "ERROR: No trustcache binary found"
+            exit 1
+        fi
+        fi
+
+
+       chmod +x Tools/trustcache
+
+       if [ -x Tools/trustcache ]; then
+        echo "trustcache OK"
+       else
+        echo "ERROR: trustcache missing"
+        exit 1
+       fi
 
         cd ../..
  
