@@ -6,68 +6,122 @@ on:
     branches:
       - main
 
+
 jobs:
   build:
+
     runs-on: macos-latest
 
     env:
       HOMEBREW_NO_AUTO_UPDATE: 1
 
+
     steps:
 
+    # 下载源码
     - name: Checkout
       uses: actions/checkout@v4
 
 
+
+    # 安装编译依赖
     - name: Install build tools
       run: |
-        brew install ldid dpkg ripgrep fakeroot coreutils
+        brew install \
+          ldid \
+          dpkg \
+          ripgrep \
+          fakeroot \
+          coreutils
 
-        echo "=== Check tools ==="
+
+        echo "===== Installed tools ====="
 
         which ldid
         which dpkg-deb
         which rg
         which fakeroot
 
-        ldid -h || true
-        dpkg-deb --version
 
 
-    - name: Fix script permissions
+    # 安装 trustcache
+    - name: Install trustcache
       run: |
-        chmod +x DevKit/Helpers/*.sh
+
+        echo "Building trustcache..."
+
+        git clone https://github.com/ProcursusTeam/trustcache.git /tmp/trustcache
+
+
+        cd /tmp/trustcache
+
+
+        make
+
+
+        sudo install -m 755 trustcache /usr/local/bin/trustcache
+
+
+        echo "===== Check trustcache ====="
+
+        which trustcache
+
+        trustcache --help || true
+
+
+
+    # 修复执行权限
+    - name: Fix permissions
+      run: |
 
         find DevKit -name "*.sh" -exec chmod +x {} \;
 
-        ls -la DevKit/Helpers/
+
+        chmod +x DevKit/Helpers/*.sh || true
 
 
+        ls -la DevKit/Helpers
+
+
+
+    # 编译
     - name: Build Relaxin TIPA
       run: |
+
         set -o pipefail
+
         make tipa 2>&1 | tee build.log
 
 
+
+    # 查找生成文件
     - name: Find TIPA
       if: always()
       run: |
-        echo "Searching tipa files..."
+
         find . -name "*.tipa" || true
 
 
+
+    # 上传日志
     - name: Upload build log
       if: always()
       uses: actions/upload-artifact@v4
       with:
+
         name: Relaxin-build-log
+
         path: build.log
 
 
+
+    # 上传 TIPA
     - name: Upload TIPA
       if: success()
       uses: actions/upload-artifact@v4
       with:
+
         name: Relaxin-tipa
+
         path: |
           **/*.tipa
