@@ -29,7 +29,7 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
       with:
-        submodules: recursive
+        submodules: false
 
 
 
@@ -40,20 +40,34 @@ jobs:
     - name: Install build tools
       run: |
 
+        echo "===== Install tools ====="
+
+
         brew install \
           ldid \
           dpkg \
           ripgrep \
           fakeroot \
-          coreutils
+          coreutils \
+          binutils \
+          gnu-tar
 
 
-        echo "===== Installed ====="
+        echo "===== PATH ====="
+
+        echo $PATH
+
+
+        echo "===== Tools ====="
+
 
         which ldid
         which dpkg-deb
         which rg
         which fakeroot
+        which ar
+        which tar
+
 
 
 
@@ -61,47 +75,8 @@ jobs:
     # Check trustcache
     # =====================
 
-     - name: Build trustcache
-  run: |
-
-    echo "===== Building trustcache ====="
-
-
-    mkdir -p Tools
-
-
-    git clone --depth=1 \
-      https://github.com/ProcursusTeam/trustcache.git \
-      /tmp/trustcache
-
-
-
-    cd /tmp/trustcache
-
-
-    make
-
-
-
-    cp trustcache \
-    $GITHUB_WORKSPACE/Tools/trustcache
-
-
-
-    chmod +x \
-    $GITHUB_WORKSPACE/Tools/trustcache
-
-
-
-    echo "===== Verify ====="
-
-
-    file \
-    $GITHUB_WORKSPACE/Tools/trustcache
-
-
-    ls -lh \
-    $GITHUB_WORKSPACE/Tools/trustcache
+    - name: Check trustcache
+      run: |
 
         echo "===== Searching trustcache ====="
 
@@ -110,9 +85,15 @@ jobs:
 
           echo "ERROR: trustcache missing"
 
+          echo ""
+
           echo "Please add executable file:"
 
           echo "Tools/trustcache"
+
+          echo ""
+
+          find . -iname "*trustcache*" || true
 
           exit 1
 
@@ -124,7 +105,7 @@ jobs:
 
 
 
-        echo "===== trustcache ====="
+        echo "===== trustcache info ====="
 
 
         ls -lh Tools/trustcache
@@ -132,6 +113,12 @@ jobs:
 
         file Tools/trustcache
 
+
+
+        echo "===== trustcache test ====="
+
+
+        Tools/trustcache --help || true
 
 
 
@@ -144,7 +131,7 @@ jobs:
       run: |
 
 
-        chmod +x Tools/trustcache
+        echo "===== Fix scripts ====="
 
 
 
@@ -158,21 +145,32 @@ jobs:
 
 
 
-        echo "===== Permissions OK ====="
+        chmod +x Tools/trustcache
 
+
+
+
+        echo "Permissions fixed"
 
 
 
 
     # =====================
-    # Environment
+    # Environment check
     # =====================
 
     - name: Verify environment
       run: |
 
 
-        echo "PATH=$PATH"
+        echo "===== Environment ====="
+
+
+        echo $PATH
+
+
+
+        echo "===== Tools ====="
 
 
         which ldid
@@ -182,11 +180,10 @@ jobs:
         which rg
 
 
+        echo "===== trustcache ====="
 
-        echo "trustcache:"
 
         ls -l Tools/trustcache
-
 
 
 
@@ -199,18 +196,23 @@ jobs:
       run: |
 
 
-        echo "===== BaseBin ====="
+        echo "===== BaseBin tree ====="
 
 
-        find Vendor/Dopamine/BaseBin -maxdepth 2 -type d || true
+        find Vendor/Dopamine/BaseBin \
+        -maxdepth 3 \
+        -type f | head -100 || true
 
 
+
+        echo ""
 
         echo "===== trustcache references ====="
 
 
-        grep -R "trustcache" Vendor/Dopamine/BaseBin || true
-
+        grep -R "trustcache" \
+        Vendor/Dopamine/BaseBin \
+        || true
 
 
 
@@ -226,8 +228,17 @@ jobs:
         set -o pipefail
 
 
-        make tipa V=1 2>&1 | tee build.log
+        export PATH="$PATH:$PWD/Tools"
 
+
+        echo "PATH=$PATH"
+
+
+        echo "===== Start build ====="
+
+
+
+        make tipa V=1 2>&1 | tee build.log
 
 
 
@@ -250,7 +261,6 @@ jobs:
 
 
 
-
     # =====================
     # Find TIPA
     # =====================
@@ -260,8 +270,13 @@ jobs:
 
       run: |
 
-        find . -name "*.tipa" || true
 
+        echo "===== Searching TIPA ====="
+
+
+        find . \
+        -name "*.tipa" \
+        -print || true
 
 
 
