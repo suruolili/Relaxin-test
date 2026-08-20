@@ -80,78 +80,85 @@ jobs:
       # =========================
       # Install trustcache
       # =========================
+      # =========================
+      # Install trustcache
+      # =========================
 
       - name: Install trustcache
         run: |
 
-
           echo "===== Searching trustcache ====="
 
 
-
-          find . \
-          -name trustcache \
-          -type f \
-          || true
+          TRUSTCACHE_PATH=""
 
 
-
+          # 搜索源码仓库
           if [ -f "./trustcache" ]; then
+              TRUSTCACHE_PATH="./trustcache"
+          fi
 
 
-              echo "Using local trustcache"
+          if [ -f "./Tools/trustcache" ]; then
+              TRUSTCACHE_PATH="./Tools/trustcache"
+          fi
 
 
-              chmod +x ./trustcache
-
-
-              sudo install \
-              -m 755 \
-              ./trustcache \
-              /usr/local/bin/trustcache
-
-
-
-          else
-
-
-              echo "Downloading trustcache"
+          if [ -f "./DevKit/trustcache" ]; then
+              TRUSTCACHE_PATH="./DevKit/trustcache"
+          fi
 
 
 
-              curl -fL \
-              https://apt.procurs.us/bootstrapped/usr/bin/trustcache \
-              -o trustcache
+          # 搜索已有环境
+          if [ -z "$TRUSTCACHE_PATH" ]; then
 
+              EXISTING=$(which trustcache || true)
 
-
-              chmod +x trustcache
-
-
-
-              sudo install \
-              -m 755 \
-              trustcache \
-              /usr/local/bin/trustcache
-
-
+              if [ -n "$EXISTING" ]; then
+                  TRUSTCACHE_PATH="$EXISTING"
+              fi
 
           fi
 
 
 
-          echo "===== trustcache check ====="
+          if [ -z "$TRUSTCACHE_PATH" ]; then
 
+              echo "ERROR: trustcache not found"
+
+              echo "Please add trustcache binary to:"
+              echo "Tools/trustcache"
+
+              exit 1
+
+          fi
+
+
+
+          echo "Using:"
+          echo "$TRUSTCACHE_PATH"
+
+
+
+          chmod +x "$TRUSTCACHE_PATH"
+
+
+
+          sudo install \
+          -m 755 \
+          "$TRUSTCACHE_PATH" \
+          /usr/local/bin/trustcache
+
+
+
+          echo "===== Verify ====="
 
 
           which trustcache
 
 
           trustcache --help || true
-
-
-
-
 
       # =========================
       # Fix permissions
