@@ -1,6 +1,5 @@
 name: Build Relaxin TIPA
 
-
 on:
   workflow_dispatch:
   push:
@@ -8,27 +7,28 @@ on:
       - main
 
 
-
 jobs:
-
   build:
 
     runs-on: macos-latest
-
 
     env:
       HOMEBREW_NO_AUTO_UPDATE: 1
 
 
-
     steps:
 
-
+    # =========================
+    # Checkout
+    # =========================
     - name: Checkout
       uses: actions/checkout@v4
 
 
 
+    # =========================
+    # Install dependencies
+    # =========================
     - name: Install build tools
       run: |
 
@@ -40,66 +40,88 @@ jobs:
           coreutils
 
 
-        echo "==== basic tools ===="
+        echo "===== Check tools ====="
 
         which ldid
         which dpkg-deb
         which rg
+        which fakeroot
 
 
 
-    #
+    # =========================
     # Install trustcache
-    #
+    # =========================
     - name: Install trustcache
       run: |
 
         echo "Installing trustcache"
 
 
-        brew install trustcache || true
+        curl -L \
+        https://github.com/opa334/trollstore-tools/releases/latest/download/trustcache \
+        -o trustcache
 
 
-        echo "Checking trustcache"
-
-
-        if command -v trustcache
-        then
-
-          trustcache --help || true
-
-        else
-
-          echo "trustcache missing"
-
+        if [ ! -f trustcache ]; then
+          echo "trustcache download failed"
           exit 1
-
         fi
 
 
+        chmod +x trustcache
 
+
+        sudo mv trustcache /usr/local/bin/trustcache
+
+
+        echo "===== Check trustcache ====="
+
+
+        which trustcache
+
+
+        trustcache --help || true
+
+
+
+    # =========================
+    # Fix scripts permission
+    # =========================
     - name: Fix permissions
       run: |
 
         find DevKit -name "*.sh" -exec chmod +x {} \;
 
+
         chmod +x DevKit/Helpers/*.sh || true
 
 
+        echo "===== Scripts ====="
 
+        ls -la DevKit/Helpers
+
+
+
+    # =========================
+    # Check environment
+    # =========================
     - name: Verify environment
       run: |
 
         echo $PATH
 
+
         which ldid
-
         which dpkg-deb
-
+        which rg
         which trustcache
 
 
 
+    # =========================
+    # Build TIPA
+    # =========================
     - name: Build Relaxin TIPA
       run: |
 
@@ -109,22 +131,39 @@ jobs:
 
 
 
+    # =========================
+    # Upload log
+    # =========================
     - name: Upload build log
       if: always()
       uses: actions/upload-artifact@v4
+
       with:
-
         name: Relaxin-build-log
-
         path: build.log
 
 
 
+    # =========================
+    # Find TIPA
+    # =========================
+    - name: Find TIPA
+      if: always()
+      run: |
+
+        find . -name "*.tipa" || true
+
+
+
+    # =========================
+    # Upload TIPA
+    # =========================
     - name: Upload TIPA
       if: success()
-      uses: actions/upload-artifact@v4
-      with:
 
+      uses: actions/upload-artifact@v4
+
+      with:
         name: Relaxin-tipa
 
         path: |
