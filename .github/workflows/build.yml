@@ -1,5 +1,6 @@
 name: Build Relaxin TIPA
 
+
 on:
   push:
     branches:
@@ -9,6 +10,7 @@ on:
 
 
 jobs:
+
   build:
 
     runs-on: macos-14
@@ -16,113 +18,98 @@ jobs:
 
     steps:
 
-    - name: Checkout source
+
+    - name: Checkout
       uses: actions/checkout@v4
       with:
         submodules: recursive
-  
+
 
 
     - name: Install dependencies
       run: |
-        echo "===== Installing dependencies ====="
 
-        brew install make ldid ripgrep || true
+        brew install \
+          ldid \
+          ripgrep \
+          jq \
+          yq
 
-        echo "===== Versions ====="
+
+        echo "===== Tools ====="
 
         clang --version
-        make --version
         rg --version
+        jq --version
+        yq --version
         ldid -h
 
 
 
-    - name: Prepare build environment
+    - name: Prepare scripts
       run: |
-        echo "===== Prepare ====="
-
-        find . -name "*.sh" -exec chmod +x {} \;
-
-        chmod +x DevKit/Helpers/check-tools.sh || true
-
-
-
-    - name: Check BaseBin
-      run: |
-        echo "===== Checking BaseBin ====="
-
-        ls -la Vendor/Dopamine/BaseBin
-
-        echo "===== Makefile ====="
-
-        head -50 Vendor/Dopamine/BaseBin/Makefile
-
-
-
-
-
-
-    #
-    # Build Relaxin
-    #
-
-    - name: Check Xcode project
-      run: |
-        echo "===== Checking project ====="
-
-        ls -la
-
-        if [ ! -f Relaxin.xcodeproj/project.pbxproj ]; then
-           echo "ERROR: project.pbxproj missing"
-           exit 1
-        fi
-
-        echo "Xcode project OK"
-    - name: Build TIPA
-      run: |
-        echo "===== Building TIPA ====="
-
-        chmod +x DevKit/Helpers/check-tools.sh || true
-
-        make \
-        MIN_IOS_VERSION=15.0 \
-        SIGNATURE_VERIFIER_SOURCE=Vendor/Dopamine/BaseBin/launchdhook/src/signed_trustcache_restore.c \
-        tipa
-
-
-
-    #
-    # Find output
-    #
-
-    - name: Find generated files
-      run: |
-        echo "===== Output ====="
 
         find . \
-        -type f \
-        \( \
+        -name "*.sh" \
+        -exec chmod +x {} \;
+
+
+
+    - name: Check project
+      run: |
+
+        echo "===== Tree ====="
+
+        ls
+
+
+        echo "===== Xcode ====="
+
+        ls -la Application || true
+
+        find . \
+        -name "*.xcodeproj"
+
+
+
+    #
+    # Build everything
+    #
+
+    - name: Build Dopamine style
+      run: |
+
+        echo "===== Building Relaxin ====="
+
+
+        make \
+        MIN_IOS_VERSION=15.0
+
+
+
+    #
+    # Find TIPA
+    #
+
+    - name: Find TIPA
+      run: |
+
+        find . \
         -name "*.tipa" \
         -o \
-        -name "*.ipa" \
-        \)
+        -name "*.ipa"
 
 
 
-    #
-    # Upload
-    #
-
-    - name: Upload TIPA
+    - name: Upload
       uses: actions/upload-artifact@v4
 
       with:
 
         name: Relaxin-TIPA
 
-        path: |
+        path:
+
+          |
           **/*.tipa
           **/*.ipa
-
-        if-no-files-found: error
