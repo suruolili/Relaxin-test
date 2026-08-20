@@ -1,12 +1,10 @@
 name: Build Relaxin TIPA
 
-
 on:
   workflow_dispatch:
   push:
     branches:
       - main
-
 
 
 jobs:
@@ -17,11 +15,7 @@ jobs:
 
 
     env:
-
       HOMEBREW_NO_AUTO_UPDATE: 1
-
-      PATH: /opt/homebrew/bin:/usr/local/bin:$PATH
-
 
 
     steps:
@@ -45,6 +39,10 @@ jobs:
     - name: Install build tools
       run: |
 
+        echo "===== System PATH ====="
+
+        echo "$PATH"
+
 
         brew install \
           ldid \
@@ -55,20 +53,23 @@ jobs:
           binutils
 
 
-
-        echo "/opt/homebrew/opt/binutils/bin" >> $GITHUB_PATH
-
+        echo "/opt/homebrew/opt/binutils/bin" >> "$GITHUB_PATH"
 
 
-        echo "===== Tools ====="
 
+        echo "===== Check tools ====="
+
+
+        which bash
+        which git
+        which sed
+        which basename
+        which uname
 
         which ldid
         which dpkg-deb
         which rg
         which fakeroot
-        which ar || true
-
 
 
 
@@ -106,31 +107,25 @@ jobs:
 
 
 
-        echo "===== trustcache ====="
-
-
-        ls -lh Tools/trustcache
-
-
-        file Tools/trustcache
-
-
-
-        mkdir -p /usr/local/bin
-
-
-
         sudo cp \
         Tools/trustcache \
         /usr/local/bin/trustcache
 
 
 
-        chmod +x /usr/local/bin/trustcache
+        sudo chmod 755 \
+        /usr/local/bin/trustcache
 
 
 
-        which trustcache || true
+        echo "===== trustcache ====="
+
+
+        which trustcache
+
+
+        file Tools/trustcache
+
 
 
 
@@ -147,14 +142,12 @@ jobs:
         -exec chmod +x {} \;
 
 
-
         chmod +x DevKit/Helpers/*.sh || true
 
 
 
-
     # =========================
-    # Environment check
+    # Verify environment
     # =========================
 
     - name: Verify environment
@@ -163,17 +156,21 @@ jobs:
 
         echo "===== PATH ====="
 
-        echo $PATH
+        echo "$PATH"
 
 
 
         echo "===== Commands ====="
 
 
+
+        which git
+        which sed
+        which basename
+        which uname
+
         which ldid
-
         which dpkg-deb
-
         which trustcache
 
 
@@ -185,14 +182,14 @@ jobs:
 
 
     # =========================
-    # BaseBin debug
+    # Debug BaseBin
     # =========================
 
     - name: Debug BaseBin
       run: |
 
 
-        echo "===== BaseBin ====="
+        echo "===== BaseBin directory ====="
 
 
         ls -la Vendor/Dopamine/BaseBin || true
@@ -202,20 +199,14 @@ jobs:
         echo "===== Makefiles ====="
 
 
+
         find Vendor/Dopamine/BaseBin \
+        \( \
         -name Makefile \
         -o \
         -name "*.mk" \
+        \) \
         || true
-
-
-
-        echo "===== trustcache usage ====="
-
-
-        grep -R "trustcache" . \
-        || true
-
 
 
 
@@ -243,7 +234,6 @@ jobs:
 
 
 
-
     # =========================
     # Analyze error
     # =========================
@@ -267,7 +257,7 @@ jobs:
 
 
 
-        echo "===== compiler errors ====="
+        echo "===== Compiler errors ====="
 
 
 
@@ -285,8 +275,8 @@ jobs:
 
 
 
-        tail -300 build.log || true
-
+        tail -300 build.log \
+        || true
 
 
 
@@ -308,7 +298,6 @@ jobs:
 
 
 
-
     # =========================
     # Find TIPA
     # =========================
@@ -321,7 +310,6 @@ jobs:
         find . \
         -name "*.tipa" \
         || true
-
 
 
 
