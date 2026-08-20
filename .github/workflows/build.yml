@@ -303,6 +303,6 @@ jobs:
 
           name: Relaxin-tipa
 
-          path:
+          path: |
 
             **/*.tipa
