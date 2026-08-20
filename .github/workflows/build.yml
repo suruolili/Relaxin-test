@@ -18,17 +18,14 @@ jobs:
 
     steps:
 
-    # =========================
+
     # Checkout
-    # =========================
     - name: Checkout
       uses: actions/checkout@v4
 
 
 
-    # =========================
     # Install dependencies
-    # =========================
     - name: Install build tools
       run: |
 
@@ -37,36 +34,47 @@ jobs:
           dpkg \
           ripgrep \
           fakeroot \
-          coreutils
+          coreutils \
+          gnu-tar \
+          binutils
 
 
         echo "===== Check tools ====="
+
 
         which ldid
         which dpkg-deb
         which rg
         which fakeroot
+        which ar
+        which ranlib
+        which tar
 
 
 
-    # =========================
+        echo 'PATH=/opt/homebrew/opt/binutils/bin:$PATH' >> $GITHUB_ENV
+
+        echo 'PATH=/opt/homebrew/opt/gnu-tar/libexec/gnubin:$PATH' >> $GITHUB_ENV
+
+
+
+
+
     # Install trustcache
-    # =========================
     - name: Install trustcache
       run: |
 
         echo "Installing trustcache"
 
 
-        curl -L \
+        curl -fL \
         https://github.com/opa334/trollstore-tools/releases/latest/download/trustcache \
         -o trustcache
 
 
-        if [ ! -f trustcache ]; then
-          echo "trustcache download failed"
-          exit 1
-        fi
+
+        file trustcache
+
 
 
         chmod +x trustcache
@@ -75,7 +83,8 @@ jobs:
         sudo mv trustcache /usr/local/bin/trustcache
 
 
-        echo "===== Check trustcache ====="
+
+        echo "===== trustcache ====="
 
 
         which trustcache
@@ -85,11 +94,12 @@ jobs:
 
 
 
-    # =========================
-    # Fix scripts permission
-    # =========================
+
+
+    # Fix permissions
     - name: Fix permissions
       run: |
+
 
         find DevKit -name "*.sh" -exec chmod +x {} \;
 
@@ -97,15 +107,17 @@ jobs:
         chmod +x DevKit/Helpers/*.sh || true
 
 
-        echo "===== Scripts ====="
+
+        echo "===== Helpers ====="
+
 
         ls -la DevKit/Helpers
 
 
 
-    # =========================
-    # Check environment
-    # =========================
+
+
+    # Verify
     - name: Verify environment
       run: |
 
@@ -118,62 +130,104 @@ jobs:
         which trustcache
 
 
+        ar --version || true
 
-    # =========================
-    # Build TIPA
-    # =========================
+        tar --version || true
+
+
+
+
+
+    # Debug BaseBin
     - name: Debug BaseBin
       run: |
 
-       echo "===== BaseBin files ====="
 
-       find . -iname "*basebin*" -o -iname "*trustcache*"
+        echo "===== BaseBin files ====="
 
-       echo "===== Makefiles ====="
 
-       grep -R "BaseBin" . || true
+        find . \
+        -iname "*basebin*" \
+        -o -iname "*BaseBin*"
+
+
+
+        echo "===== trustcache usage ====="
+
+
+        grep -R "trustcache" . || true
+
+
+
+        echo "===== Archive tools ====="
+
+
+        which ar
+        which ranlib
+        which tar
+
+
+
+
+
+    # Build
     - name: Build Relaxin TIPA
       run: |
+
         set -o pipefail
+
 
         export VERBOSE=1
 
-        make tipa V=1 2>&1 | tee build.log
+        export V=1
 
 
-    # =========================
+
+        make clean || true
+
+
+        make tipa V=1 VERBOSE=1 2>&1 | tee build.log
+
+
+
+
+
     # Upload log
-    # =========================
     - name: Upload build log
       if: always()
+
       uses: actions/upload-artifact@v4
 
       with:
+
         name: Relaxin-build-log
+
         path: build.log
 
 
 
-    # =========================
+
+
     # Find TIPA
-    # =========================
     - name: Find TIPA
       if: always()
+
       run: |
 
         find . -name "*.tipa" || true
 
 
 
-    # =========================
+
+
     # Upload TIPA
-    # =========================
     - name: Upload TIPA
       if: success()
 
       uses: actions/upload-artifact@v4
 
       with:
+
         name: Relaxin-tipa
 
         path: |
