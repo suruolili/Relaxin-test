@@ -1,6 +1,5 @@
 name: Build Relaxin TIPA
 
-
 on:
   workflow_dispatch:
   push:
@@ -9,11 +8,9 @@ on:
 
 
 jobs:
-
   build:
 
     runs-on: macos-latest
-
 
     env:
       HOMEBREW_NO_AUTO_UPDATE: 1
@@ -21,11 +18,9 @@ jobs:
 
     steps:
 
-
     # =========================
     # Checkout
     # =========================
-
     - name: Checkout
       uses: actions/checkout@v4
 
@@ -34,123 +29,53 @@ jobs:
     # =========================
     # Install dependencies
     # =========================
-
     - name: Install build tools
       run: |
-
-        echo "===== Install tools ====="
-
 
         brew install \
           ldid \
           dpkg \
           ripgrep \
           fakeroot \
-          coreutils \
-          gnu-tar \
-          binutils
+          coreutils
 
 
-
-        echo "/opt/homebrew/opt/binutils/bin" >> $GITHUB_PATH
-
-        echo "/opt/homebrew/opt/gnu-tar/libexec/gnubin" >> $GITHUB_PATH
-
-
-
-        echo "===== Verify ====="
-
+        echo "===== Check tools ====="
 
         which ldid
-
         which dpkg-deb
-
         which rg
-
         which fakeroot
-
-        which ar
-
-        which tar
-
-
 
 
 
     # =========================
     # Install trustcache
     # =========================
-
     - name: Install trustcache
       run: |
 
-        echo "===== Searching trustcache ====="
+        echo "Installing trustcache"
 
 
+        curl -L \
+        https://github.com/opa334/trollstore-tools/releases/latest/download/trustcache \
+        -o trustcache
 
-        TRUSTCACHE=""
 
-
-
-        if [ -f "Tools/trustcache" ]; then
-
-            TRUSTCACHE="Tools/trustcache"
-
+        if [ ! -f trustcache ]; then
+          echo "trustcache download failed"
+          exit 1
         fi
 
 
-
-        if [ -z "$TRUSTCACHE" ]; then
-
-            if command -v trustcache; then
-
-                TRUSTCACHE=$(which trustcache)
-
-            fi
-
-        fi
+        chmod +x trustcache
 
 
-
-        if [ -z "$TRUSTCACHE" ]; then
-
-            echo "ERROR: trustcache not found"
-
-            echo ""
-
-            echo "Please add executable file:"
-
-            echo "Tools/trustcache"
-
-            echo ""
-
-            find . -iname "*trustcache*" || true
+        sudo mv trustcache /usr/local/bin/trustcache
 
 
-            exit 1
-
-        fi
-
-
-
-        echo "Using trustcache:"
-
-        echo "$TRUSTCACHE"
-
-
-
-        chmod +x "$TRUSTCACHE"
-
-
-
-        sudo install \
-          -m 755 \
-          "$TRUSTCACHE" \
-          /usr/local/bin/trustcache
-
-
-
-        echo "===== trustcache check ====="
+        echo "===== Check trustcache ====="
 
 
         which trustcache
@@ -160,170 +85,85 @@ jobs:
 
 
 
-
-
     # =========================
-    # Fix permissions
+    # Fix scripts permission
     # =========================
-
     - name: Fix permissions
       run: |
 
-
-        echo "===== chmod scripts ====="
-
-
-
-        find DevKit \
-          -name "*.sh" \
-          -exec chmod +x {} \;
-
+        find DevKit -name "*.sh" -exec chmod +x {} \;
 
 
         chmod +x DevKit/Helpers/*.sh || true
 
 
+        echo "===== Scripts ====="
 
         ls -la DevKit/Helpers
 
 
 
-
-
     # =========================
-    # Environment check
+    # Check environment
     # =========================
-
     - name: Verify environment
       run: |
-
-
-        echo "===== PATH ====="
 
         echo $PATH
 
 
-
-        echo "===== Tools ====="
-
-
-
         which ldid
-
         which dpkg-deb
-
         which rg
-
         which trustcache
-
-
-
-        trustcache --help || true
-
-
-
-
-
-    # =========================
-    # Debug BaseBin
-    # =========================
-
-    - name: Debug BaseBin
-      run: |
-
-
-        echo "===== Search BaseBin ====="
-
-
-
-        find . \
-        \( \
-        -iname "*basebin*" \
-        -o \
-        -iname "*trustcache*" \
-        \)
-
-
-
-        echo "===== Search usage ====="
-
-
-
-        grep -R "trustcache" . || true
-
-
 
 
 
     # =========================
     # Build TIPA
     # =========================
-
     - name: Build Relaxin TIPA
       run: |
 
-
         set -o pipefail
 
-
-
-        export V=1
-
-        export VERBOSE=1
-
-
-
-        make tipa V=1 VERBOSE=1 2>&1 | tee build.log
-
-
+        make tipa 2>&1 | tee build.log
 
 
 
     # =========================
     # Upload log
     # =========================
-
     - name: Upload build log
       if: always()
-
       uses: actions/upload-artifact@v4
 
       with:
-
         name: Relaxin-build-log
-
         path: build.log
-
-
 
 
 
     # =========================
     # Find TIPA
     # =========================
-
     - name: Find TIPA
       if: always()
-
       run: |
 
         find . -name "*.tipa" || true
 
 
 
-
-
     # =========================
     # Upload TIPA
     # =========================
-
     - name: Upload TIPA
       if: success()
 
       uses: actions/upload-artifact@v4
 
       with:
-
         name: Relaxin-tipa
 
         path: |
