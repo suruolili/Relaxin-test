@@ -20,7 +20,7 @@ jobs:
       uses: actions/checkout@v4
       with:
         submodules: recursive
-
+  
 
 
     - name: Install dependencies
@@ -67,6 +67,18 @@ jobs:
     # Build Relaxin
     #
 
+    - name: Check Xcode project
+      run: |
+        echo "===== Checking project ====="
+
+        ls -la
+
+        if [ ! -f Relaxin.xcodeproj/project.pbxproj ]; then
+           echo "ERROR: project.pbxproj missing"
+           exit 1
+        fi
+
+        echo "Xcode project OK"
     - name: Build TIPA
       run: |
         echo "===== Building TIPA ====="
