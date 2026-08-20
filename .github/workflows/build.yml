@@ -24,7 +24,7 @@ jobs:
 
     - name: Fix permissions
       run: |
-        chmod +x DevKit/Helpers/check-tools.sh
+        chmod +x DevKit/Helpers/*.sh
 
 
     - name: Build TIPA
