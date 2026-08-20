@@ -24,6 +24,14 @@ jobs:
 
         brew install make clang ldid
 
+        echo "===== Compiler ====="
+        clang --version
+
+        echo "===== Make ====="
+        make --version
+
+        echo "===== ldid ====="
+        ldid -h
 
     - name: Check source tree
       run: |
